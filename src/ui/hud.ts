@@ -174,10 +174,13 @@ export class Hud {
         }
         #roll { pointer-events: auto; width: 108px; height: 108px; border-radius: 50%;
                 font-size: 1.1rem; letter-spacing: 0.14em; font-weight: 700;
-                color: #f3e9d5; background: radial-gradient(circle at 35% 30%, #2c2e33, #17181c 70%);
-                border: 3px solid #c8a45a; cursor: pointer;
-                box-shadow: 0 6px 16px rgba(0,0,0,0.6), inset 0 0 0 6px rgba(200,164,90,0.12); }
-        #roll:hover:not(:disabled) { background: radial-gradient(circle at 35% 30%, #3a3d44, #1d1f24 70%); }
+                color: #eafbef; background: radial-gradient(circle at 35% 30%, #1d3a2c, #0d1b14 72%);
+                border: 3px solid #3fae6a; cursor: pointer;
+                box-shadow: 0 6px 18px rgba(0,0,0,0.65), 0 0 22px rgba(63, 174, 106, 0.35),
+                            inset 0 0 0 6px rgba(63, 174, 106, 0.16); }
+        #roll:hover:not(:disabled) { background: radial-gradient(circle at 35% 30%, #275341, #12261b 72%);
+                box-shadow: 0 6px 18px rgba(0,0,0,0.65), 0 0 30px rgba(63, 174, 106, 0.55),
+                            inset 0 0 0 6px rgba(63, 174, 106, 0.2); }
         #roll:disabled { opacity: 0.45; cursor: default; }
         #fair { position: absolute; right: 1rem; top: 0.8rem; text-align: right;
                 font: 11px ui-monospace, monospace; color: #6d7a86; max-width: 40vw; }

@@ -87,8 +87,8 @@ export function createScene(container: HTMLElement): CrapsScene {
   composer.addPass(new RenderPass(scene, cameraRig.camera));
   const bokeh = new BokehPass(scene, cameraRig.camera, {
     focus: 1.3,
-    aperture: 0.00016,
-    maxblur: 0.006,
+    aperture: 0.00012,
+    maxblur: 0.0045,
   });
   composer.addPass(bokeh);
   composer.addPass(new OutputPass()); // applies tone mapping + sRGB after the bokeh

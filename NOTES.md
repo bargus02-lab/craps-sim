@@ -234,6 +234,29 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 5 — premium pass (user-requested)
+
+- **Pyramid-rubber walls**: the inner walls (including the far wall the dice
+  strike) now wear a procedural studded texture with bump mapping — the
+  classic diamond rubber. Long and short walls use matched stud densities.
+- **Richer wood**: deeper mahogany gradient with light/dark grain streaks,
+  glossier finish, environment sheen.
+- **Layout art v3**: rounded two-tone cells throughout, brighter saturated
+  teal felt, white serif numerals, gold serif COME, tone-on-tone PASS LINE,
+  softened red barred lettering, arc-captioned field circles — the premium
+  Strip idiom.
+- **Dice up to 38 mm.** The audio impact classifier became die-size aware,
+  and wall proximity now outranks die-proximity when both dice bang the back
+  wall together (that sound is the wall, not a chip-clack).
+- **Stack totals on the top chip**: every stack's top chip carries a white
+  inset disc with the stack's total in the top chip's color — exactly the
+  dealer-lammer look from the reference. Disc textures are cached per
+  (value, color).
+- **HUD**: green-ringed glowing ROLL, MY-NUMBERS-style payout column with
+  green/red number circles. Depth-of-field focus now re-syncs on window
+  resize (it previously went blurry when the aspect changed the camera
+  distance) and the bokeh was softened.
+
 ## Round 4 refinements (user-requested)
 
 - **Big 6 / Big 8 removed from the layout** (the engine still knows the bet;

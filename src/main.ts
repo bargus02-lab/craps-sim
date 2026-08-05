@@ -54,13 +54,14 @@ document.body.innerHTML = `
     #payoutCol .pc-head { text-align: center; font-size: 9px; letter-spacing: 0.16em;
                           color: #c8a45a; margin-bottom: 3px; }
     #payoutCol .pc-row { display: flex; align-items: center; gap: 7px;
-                         background: rgba(10, 14, 12, 0.82); border: 1px solid #2c3a32;
+                         background: rgba(8, 16, 13, 0.75); border: 1px solid rgba(63, 174, 106, 0.35);
                          border-radius: 999px; padding: 2px 9px 2px 3px; }
-    #payoutCol .pc-num { width: 24px; height: 24px; border-radius: 50%; display: flex;
+    #payoutCol .pc-num { width: 26px; height: 26px; border-radius: 50%; display: flex;
                          align-items: center; justify-content: center;
-                         background: rgba(240, 236, 224, 0.9); color: #23241f;
-                         font-size: 12px; font-weight: 700; }
-    #payoutCol .pc-row.seven .pc-num { background: #b8352c; color: #f5f0df; }
+                         background: radial-gradient(circle at 38% 32%, #2a9463, #14603c 75%);
+                         color: #f2fbef; font-size: 12.5px; font-weight: 700;
+                         box-shadow: inset 0 0 0 1.5px rgba(240, 250, 240, 0.35); }
+    #payoutCol .pc-row.seven .pc-num { background: radial-gradient(circle at 38% 32%, #d05243, #90291e 75%); }
     #payoutCol .pc-val { font-size: 11.5px; font-weight: 700; min-width: 52px; text-align: right; }
     #payoutCol .pos { color: #7fe09a; }
     #payoutCol .neg { color: #f08a7a; }
@@ -259,6 +260,9 @@ function applyView() {
   view.setFocusDistance(prefs.view === 'overhead' ? view.cameraRig.overheadHeight : 1.3);
 }
 applyView();
+// The overhead camera distance depends on the window aspect — keep the
+// depth-of-field focal plane matched when the window changes.
+window.addEventListener('resize', () => applyView());
 
 const panels = new Panels(
   document.body,

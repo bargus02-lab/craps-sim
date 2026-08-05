@@ -29,7 +29,9 @@ const IMPACT_DV = 1.1;
 /** Delta-v that maps to full intensity. */
 const MAX_DV = 7;
 /** Per-die refractory period so one bounce is one sound. */
-const DEBOUNCE_S = 0.05;
+const DEBOUNCE_S = 0.045;
+/** How close to a wall an impact must be to sound like the wall (die-size aware). */
+const WALL_MARGIN = DICE.half * 2 + 0.06;
 
 function pos(frames: Float32Array, f: number, die: 0 | 1): [number, number, number] {
   const o = f * FLOATS_PER_FRAME + die * 7;
@@ -67,14 +69,17 @@ export function extractAudioTrack(
         lastImpact[die] = t;
         const other = pos(frames, f, die === 0 ? 1 : 0);
         const nearOther =
-          Math.hypot(px - other[0], py - other[1], pz - other[2]) < DICE.half * 3.2;
+          Math.hypot(px - other[0], py - other[1], pz - other[2]) < DICE.half * 2.6;
         const nearWall =
-          Math.abs(px) > TABLE.feltHalfX - 0.07 || Math.abs(pz) > TABLE.feltHalfZ - 0.07;
+          Math.abs(px) > TABLE.feltHalfX - WALL_MARGIN ||
+          Math.abs(pz) > TABLE.feltHalfZ - WALL_MARGIN;
+        // Wall wins: dice often arrive at the back wall together, and that
+        // bang should sound like the wall, not a chip-clack.
         impacts.push({
           t,
           die,
           intensity: Math.min(1, dv / MAX_DV),
-          kind: nearOther ? 'dice' : nearWall ? 'wall' : 'felt',
+          kind: nearWall ? 'wall' : nearOther ? 'dice' : 'felt',
         });
       }
 

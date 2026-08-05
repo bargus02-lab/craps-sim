@@ -181,6 +181,60 @@ export class ChipRenderer {
   private scl = new THREE.Vector3(1, 1, 1);
   private axisY = new THREE.Vector3(0, 1, 0);
 
+  // "Total" discs: the top chip of every stack shows the stack's full value,
+  // like a dealer's lammer — white inset with the amount in the chip's color.
+  private discGeo = new THREE.CircleGeometry(CHIP_RADIUS * 0.7, 28);
+  private discPool: THREE.Mesh[] = [];
+  private discTexCache = new Map<string, THREE.CanvasTexture>();
+
+  private discTexture(total: number, color: string): THREE.CanvasTexture {
+    const key = `${total}:${color}`;
+    const cached = this.discTexCache.get(key);
+    if (cached) return cached;
+    const c = document.createElement('canvas');
+    c.width = c.height = 256;
+    const ctx = c.getContext('2d')!;
+    ctx.clearRect(0, 0, 256, 256);
+    ctx.fillStyle = '#f4f1e6';
+    ctx.beginPath();
+    ctx.arc(128, 128, 124, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = color;
+    ctx.lineWidth = 10;
+    ctx.beginPath();
+    ctx.arc(128, 128, 106, 0, Math.PI * 2);
+    ctx.stroke();
+    const label = `${Math.round(total)}`;
+    const size = label.length <= 2 ? 118 : label.length === 3 ? 92 : label.length === 4 ? 72 : 58;
+    ctx.fillStyle = color;
+    ctx.font = `800 ${size}px 'Avenir Next', Arial, sans-serif`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText(label, 128, 136);
+    const tex = new THREE.CanvasTexture(c);
+    tex.colorSpace = THREE.SRGBColorSpace;
+    tex.anisotropy = 8;
+    this.discTexCache.set(key, tex);
+    return tex;
+  }
+
+  private placeDisc(index: number, x: number, z: number, y: number, total: number, color: string) {
+    let disc = this.discPool[index];
+    if (!disc) {
+      disc = new THREE.Mesh(
+        this.discGeo,
+        new THREE.MeshBasicMaterial({ transparent: true, depthWrite: false }),
+      );
+      disc.rotateX(-Math.PI / 2); // face up, lettering upright toward the player
+      this.discPool[index] = disc;
+      this.group.add(disc);
+    }
+    (disc.material as THREE.MeshBasicMaterial).map = this.discTexture(total, color);
+    (disc.material as THREE.MeshBasicMaterial).needsUpdate = true;
+    disc.position.set(x, y, z);
+    disc.visible = true;
+  }
+
   constructor() {
     const geo = chipGeometry();
     for (const d of CHIP_DENOMS) {
@@ -202,12 +256,28 @@ export class ChipRenderer {
   update(bets: Bets) {
     const counts = new Map<ChipDenom, number>();
     for (const d of CHIP_DENOMS) counts.set(d, 0);
+    let discIndex = 0;
 
     for (const { id, amount } of iterBets(bets)) {
       const anchor = anchorForBetId(id);
       // Smallest denominations at the BOTTOM of the stack — a red $5 added to
       // a green $25 slides underneath it.
       const chips = chipsFor(amount).reverse();
+
+      // Total disc rides the top chip of the first column.
+      const topCount = Math.min(chips.length, MAX_STACK);
+      const topDenom = chips[topCount - 1];
+      // The white $1 face needs a darker ink or the number vanishes.
+      const ink = topDenom === 1 ? '#7d7662' : CHIP_STYLE[topDenom].base;
+      this.placeDisc(
+        discIndex++,
+        anchor.x,
+        anchor.z,
+        0.001 + (topCount - 1) * (CHIP_HEIGHT * 1.04) + CHIP_HEIGHT + 0.0006,
+        amount,
+        ink,
+      );
+
       const baseSeed = hash(id);
       let slot = 0; // advances only for chips actually rendered — no floating gaps
       for (let i = 0; i < chips.length; i++) {
@@ -239,6 +309,9 @@ export class ChipRenderer {
       const mesh = this.meshes.get(d)!;
       mesh.count = counts.get(d)!;
       mesh.instanceMatrix.needsUpdate = true;
+    }
+    for (let i = discIndex; i < this.discPool.length; i++) {
+      this.discPool[i].visible = false;
     }
   }
 }
