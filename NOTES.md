@@ -383,9 +383,11 @@ instanced chips; 121 fps measured with depth of field enabled.
    or a 7 rolls on a come-out, the flat resolves and the odds are given back,
    neither won nor lost. Togglable via `comeOddsWorkingOnComeOut`. Don't Come
    odds are always working (not togglable), per spec.
-8. **Don't-side odds caps** are enforced on potential **win**, not lay amount:
-   3-4-5x → lay to win up to 6× the flat (the standard rule); a flat `N×` policy
-   → lay to win up to N× the flat. Take-side caps are per-point multiples.
+8. **Don't-side odds caps** (corrected in Round 6 after a user bug report):
+   under 3-4-5x the don't side may lay up to **6× the flat bet** on any point,
+   winning 3x/4x/5x the flat by point — the mirror of the take schedule. A
+   flat `N×` policy caps the potential win at N× the flat (lay up to 2N× on
+   the 4/10). Take-side caps are per-point multiples.
 9. **"Keep winning bets" for one-roll bets** (Field, props): the spec lists
    props under standing bets, so on a win the original wager stays working for
    the next roll and only net winnings are paid. On a loss it comes down.
