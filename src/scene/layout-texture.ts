@@ -297,16 +297,11 @@ export function paintLayout(): THREE.CanvasTexture {
     text(ctx, '8', -0.885, 0.045, 38, { color: WHITE, weight: 900 });
   }
 
-  // COME + FIELD for an end section (parameterized for the mirror).
-  const paintLanes = (comeR: Rect, fieldR: Rect, clipRight: number | null) => {
+  // COME + FIELD lanes.
+  const paintLanes = (comeR: Rect, fieldR: Rect) => {
     ctx.save();
-    if (clipRight !== null) {
-      ctx.beginPath();
-      ctx.rect(0, 0, px(clipRight), H);
-      ctx.clip();
-    }
     box(ctx, comeR);
-    const comeCx = clipRight === null ? (comeR.x0 + comeR.x1) / 2 : comeR.x0 + 0.42;
+    const comeCx = (comeR.x0 + comeR.x1) / 2;
     text(ctx, 'COME', comeCx, (comeR.z0 + comeR.z1) / 2 + 0.004, 104, {
       color: TONE,
       spacing: '30px',
@@ -334,16 +329,11 @@ export function paintLayout(): THREE.CanvasTexture {
     text(ctx, 'FIELD', fx0 + 0.565, midZ + 0.035, 46, { italic: true, spacing: '16px' });
     ctx.restore();
   };
-  paintLanes(region('come'), region('field'), null);
+  paintLanes(region('come'), region('field'));
 
   // --- number columns with LOSE / WIN rows ----------------------------------
-  const paintNumberCol = (n: PointNumber, colRect: Rect, showBuy: boolean, clipRight: number | null) => {
+  const paintNumberCol = (n: PointNumber, colRect: Rect, showBuy: boolean) => {
     ctx.save();
-    if (clipRight !== null) {
-      ctx.beginPath();
-      ctx.rect(0, 0, px(clipRight), H);
-      ctx.clip();
-    }
     const cx = (colRect.x0 + colRect.x1) / 2;
     const lose: Rect = { ...colRect, z1: LOSE_Z1 };
     const num: Rect = { ...colRect, z0: LOSE_Z1, z1: WIN_Z0 };
@@ -366,7 +356,7 @@ export function paintLayout(): THREE.CanvasTexture {
     ctx.restore();
   };
   for (const n of [4, 5, 6, 8, 9, 10] as PointNumber[]) {
-    paintNumberCol(n, numberBoxRect(n), n === 4 || n === 10, null);
+    paintNumberCol(n, numberBoxRect(n), n === 4 || n === 10);
   }
 
   // Don't come: barred style (faded).
@@ -439,20 +429,6 @@ export function paintLayout(): THREE.CanvasTexture {
     text(ctx, 'HORN', (horn.x0 + horn.x1) / 2, (horn.z0 + horn.z1) / 2 - 0.012, 34, { spacing: '5px' });
     text(ctx, '2 · 3 · 11 · 12', (horn.x0 + horn.x1) / 2, (horn.z0 + horn.z1) / 2 + 0.032, 18, {
       color: 'rgba(244,241,228,0.75)',
-    });
-  }
-
-  // --- partial mirrored second end (cut by the right wall) ------------------
-  {
-    paintLanes(region('mirror:come'), region('mirror:field'), 1.3);
-    ([4, 5] as PointNumber[]).forEach((n, i) => {
-      const col: Rect = {
-        x0: 0.74 + i * 0.28,
-        z0: numberBoxRect(4).z0,
-        x1: Math.min(1.3, 0.74 + (i + 1) * 0.28),
-        z1: numberBoxRect(4).z1,
-      };
-      paintNumberCol(n, col, n === 4, 1.3);
     });
   }
 

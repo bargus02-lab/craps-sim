@@ -5,7 +5,6 @@ import { CHIP_DENOMS, CHIP_STYLE, type ChipDenom } from '../scene/chips';
 
 export interface HudCallbacks {
   onSelectDenom(d: ChipDenom): void;
-  onToggleRemove(active: boolean): void;
   onToggleKeep(active: boolean): void;
   onToggleView(): void;
   onRoll(): void;
@@ -28,11 +27,9 @@ export class Hud {
   private resultEl: HTMLElement;
   private fairEl: HTMLElement;
   private rollBtn: HTMLButtonElement;
-  private removeBtn: HTMLButtonElement;
   private tooltipEl: HTMLElement;
   private toastEl: HTMLElement;
   private toastTimer: ReturnType<typeof setTimeout> | null = null;
-  private removeMode = false;
 
   constructor(root: HTMLElement, cb: HudCallbacks) {
     root.insertAdjacentHTML(
@@ -51,7 +48,6 @@ export class Hud {
         <div id="rail">
           <div id="chips"></div>
           <button id="keepBtn" class="active" title="Winning bets stay working; contract bets re-place automatically">KEEP WINNINGS</button>
-          <button id="removeBtn" title="Remove mode — or ctrl+click / right-click a bet to take chips down">REMOVE</button>
           <button id="viewBtn" title="Switch between the overhead betting view and the first-person rail view"></button>
           <button id="roll">ROLL</button>
         </div>
@@ -100,10 +96,6 @@ export class Hud {
         .chip.active { transform: translateY(-8px);
                        box-shadow: 0 10px 18px rgba(0,0,0,0.6), 0 0 0 3px #e8c476,
                                    inset 0 0 0 4px rgba(255,255,255,0.14); }
-        #removeBtn { pointer-events: auto; padding: 0.55em 1.1em; font-size: 0.78rem;
-                     letter-spacing: 0.16em; color: #e8b0a0; background: rgba(60, 18, 12, 0.75);
-                     border: 1px solid #7c3c2e; border-radius: 999px; cursor: pointer; }
-        #removeBtn.active { background: #8e2f1d; color: #ffe8dc; box-shadow: 0 0 0 3px rgba(232, 121, 87, 0.4); }
         #keepBtn { pointer-events: auto; padding: 0.55em 1.1em; font-size: 0.78rem;
                    letter-spacing: 0.12em; color: #9fc4a8; background: rgba(14, 40, 24, 0.75);
                    border: 1px solid #2e5c3c; border-radius: 999px; cursor: pointer; }
@@ -156,7 +148,6 @@ export class Hud {
     this.resultEl = document.getElementById('result')!;
     this.fairEl = document.getElementById('fair')!;
     this.rollBtn = document.getElementById('roll') as HTMLButtonElement;
-    this.removeBtn = document.getElementById('removeBtn') as HTMLButtonElement;
     this.tooltipEl = document.getElementById('tooltip')!;
     this.toastEl = document.getElementById('toast')!;
 
@@ -178,12 +169,6 @@ export class Hud {
     }
     // Default selection: $5.
     (chipsEl.querySelector('[data-denom="5"]') as HTMLButtonElement).classList.add('active');
-
-    this.removeBtn.addEventListener('click', () => {
-      this.removeMode = !this.removeMode;
-      this.removeBtn.classList.toggle('active', this.removeMode);
-      cb.onToggleRemove(this.removeMode);
-    });
 
     const keepBtn = document.getElementById('keepBtn') as HTMLButtonElement;
     keepBtn.addEventListener('click', () => {

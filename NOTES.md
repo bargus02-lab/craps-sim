@@ -234,6 +234,21 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Main-view refinements (user-requested)
+
+- The mirrored second end was removed again — single-end table only — and the
+  main view now frames just the active half (x ≈ −1.3..0.7) at a tighter
+  distance, letting the rail crop top/bottom like the reference presentation.
+- The REMOVE button and remove-mode are gone: **ctrl+click** (cmd+click on
+  Mac, right-click also works) is the removal gesture. Hovering a live bet
+  shows "$X riding · ctrl+click removes".
+- Roll-history strip now shows the last 20 totals.
+- **Payout tags**: whenever a number has money on it (place, buy, or a
+  traveled come point with odds), a floating gold tag under that column shows
+  exactly what lands in your stack if the number rolls — e.g. "6 pays
+  $29.17" for $25 place at 7:6, "4 pays $48.75" for $25 buy at 2:1 less the
+  5% win commission. Tags hide while the dice are rolling.
+
 ## Strip-style main view (user-requested, post-release)
 
 - **Main view**: the default betting view is now a gently tilted plan view

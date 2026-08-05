@@ -79,20 +79,20 @@ export class RailCamera {
 
   private computeOverhead(aspect: number) {
     // Not straight down: a gently tilted plan view (the "main view"), like a
-    // player leaning over the table — whole layout visible with perspective.
+    // player leaning over the table. Framed on the ACTIVE half of the table
+    // (the printed end section + props, x -1.3..0.7) rather than the empty
+    // shooter's apron, with the rail allowed to crop top/bottom.
     const elevation = THREE.MathUtils.degToRad(64);
     const hfov = THREE.MathUtils.degToRad(CAMERA.horizontalFov);
     const vfov = THREE.MathUtils.degToRad(verticalFov(aspect));
-    // Half extents of felt + wood rail, with margin. Depth foreshortens by
-    // sin(elevation) in view space.
-    const hx = TABLE.feltHalfX + TABLE.wallThickness + TABLE.railWidth + 0.1;
-    const hz = TABLE.feltHalfZ + TABLE.wallThickness + TABLE.railWidth + 0.12;
+    const hx = 1.14; // half-width of the framed area around the layout
+    const hz = TABLE.feltHalfZ + TABLE.wallThickness + 0.03;
     const dW = hx / Math.tan(hfov / 2);
-    const dH = (hz * Math.sin(elevation) + 0.1) / Math.tan(vfov / 2);
-    const d = Math.max(dW, dH) + 0.08;
+    const dH = (hz * Math.sin(elevation) + 0.06) / Math.tan(vfov / 2);
+    const d = Math.max(dW, dH) + 0.06;
     this.overheadDist = d;
 
-    const target = new THREE.Vector3(0, 0, -0.02);
+    const target = new THREE.Vector3(-0.2, 0, -0.02);
     const dir = new THREE.Vector3(0, -Math.sin(elevation), -Math.cos(elevation));
     this.overheadPos.copy(target).addScaledVector(dir, -d);
     const m = new THREE.Matrix4().lookAt(this.overheadPos, target, new THREE.Vector3(0, 1, 0));

@@ -14,13 +14,20 @@ import {
   totalOnTable,
   updateSettings,
   POINT_NUMBERS,
+  type BetTarget,
 } from './engine/state';
+import { PLACE_PAY, TAKE_ODDS, buyWinnings } from './engine/payouts';
 import { resolve as resolveRoll, type Resolution, type RollEvent } from './engine/resolve';
 import { ChipRenderer, type ChipDenom } from './scene/chips';
 import { LayoutPicker } from './scene/picking';
 import { Hud, fmt, type BreakdownEntry } from './ui/hud';
 import { Panels } from './ui/panels';
-import { LAYOUT_REGIONS, oddsRegionsFor, type LayoutRegion } from './scene/layout';
+import {
+  LAYOUT_REGIONS,
+  oddsRegionsFor,
+  numberBoxRect,
+  type LayoutRegion,
+} from './scene/layout';
 import { Puck } from './scene/puck';
 import { RegionFlash } from './scene/flash';
 import { SoundEngine } from './audio/sound';
@@ -36,10 +43,16 @@ import {
 
 document.body.innerHTML = `
   <div id="stage"></div>
+  <div id="payoutTags"></div>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0c10; }
     #stage { position: fixed; inset: 0; }
     #stage canvas { display: block; touch-action: none; }
+    #payoutTags { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
+    .ptag { position: fixed; transform: translate(-50%, -50%); white-space: nowrap;
+            padding: 2px 9px; border-radius: 999px; font: 700 11.5px 'Avenir Next', sans-serif;
+            letter-spacing: 0.04em; color: #1d1a10; background: rgba(232, 196, 118, 0.94);
+            border: 1px solid #8a6c2f; box-shadow: 0 2px 6px rgba(0,0,0,0.55); }
   </style>`;
 
 const stage = document.getElementById('stage')!;
@@ -85,7 +98,6 @@ document.addEventListener('visibilitychange', () => {
 
 // ------------------------------------------------------------- table pieces
 let activeDenom: ChipDenom = 5;
-let removeMode = false;
 let rolling = false;
 let rollCount = stats.totalRolls;
 
@@ -103,9 +115,6 @@ view.onFrame((delta) => {
 const hud = new Hud(document.body, {
   onSelectDenom(d) {
     activeDenom = d;
-  },
-  onToggleRemove(active) {
-    removeMode = active;
   },
   onToggleKeep(active) {
     state = updateSettings(state, { keepWinningBetsOnTable: active });
@@ -170,8 +179,105 @@ const panels = new Panels(
   },
 );
 
+/** How much is currently riding on a bet target (for hover info). */
+function amountFor(t: BetTarget): number {
+  const b = state.bets;
+  switch (t.kind) {
+    case 'passLine':
+      return b.passLine;
+    case 'passOdds':
+      return b.passOdds;
+    case 'dontPass':
+      return b.dontPass;
+    case 'dontPassOdds':
+      return b.dontPassOdds;
+    case 'come':
+      return b.come;
+    case 'comeOdds':
+      return b.comePoints[t.number]?.odds ?? 0;
+    case 'dontCome':
+      return b.dontCome;
+    case 'dontComeOdds':
+      return b.dontComePoints[t.number]?.odds ?? 0;
+    case 'place':
+      return b.place[t.number] ?? 0;
+    case 'buy':
+      return b.buy[t.number] ?? 0;
+    case 'lay':
+      return b.lay[t.number] ?? 0;
+    case 'field':
+      return b.field;
+    case 'big6':
+      return b.big6;
+    case 'big8':
+      return b.big8;
+    case 'hardway':
+      return b.hardways[t.number] ?? 0;
+    case 'prop':
+      return b.props[t.prop];
+  }
+}
+
+// ---- floating "pays $X" tags over number columns with live bets ------------
+const tagsEl = document.getElementById('payoutTags')!;
+interface PayoutTag {
+  el: HTMLElement;
+  x: number;
+  z: number;
+}
+let payoutTags: PayoutTag[] = [];
+
+function rebuildPayoutTags() {
+  tagsEl.innerHTML = '';
+  payoutTags = [];
+  for (const n of POINT_NUMBERS) {
+    // What lands in your stack if this number rolls right now.
+    let win = 0;
+    const p = state.bets.place[n];
+    if (p) win += p * PLACE_PAY[n];
+    if (n === 4 || n === 10) {
+      const bought = state.bets.buy[n];
+      if (bought) win += buyWinnings(bought);
+    }
+    const cp = state.bets.comePoints[n];
+    if (cp) win += cp.flat + cp.odds * TAKE_ODDS[n];
+    if (win <= 0) continue;
+    const el = document.createElement('span');
+    el.className = 'ptag';
+    el.textContent = `${n} pays ${fmt(win)}`;
+    tagsEl.appendChild(el);
+    const box = numberBoxRect(n);
+    payoutTags.push({ el, x: (box.x0 + box.x1) / 2, z: -0.402 });
+  }
+}
+
+const tagVec = new THREE.Vector3();
+view.onFrame(() => {
+  const hide =
+    rolling ||
+    playback !== null ||
+    preRoll !== null ||
+    view.cameraRig.isFocusEngaged ||
+    view.cameraRig.isAnimating;
+  tagsEl.style.display = hide ? 'none' : 'block';
+  if (hide) return;
+  const el = view.renderer.domElement;
+  const r = el.getBoundingClientRect();
+  for (const t of payoutTags) {
+    tagVec.set(t.x, 0.002, t.z).project(view.cameraRig.camera);
+    if (tagVec.z > 1 || Math.abs(tagVec.x) > 1.05 || Math.abs(tagVec.y) > 1.05) {
+      t.el.style.display = 'none';
+      continue;
+    }
+    t.el.style.display = 'inline-block';
+    t.el.style.left = `${r.left + ((tagVec.x + 1) / 2) * r.width}px`;
+    t.el.style.top = `${r.top + ((-tagVec.y + 1) / 2) * r.height}px`;
+  }
+});
+
 function refresh() {
   chips.update(state.bets);
+  rebuildPayoutTags();
   hud.setBankroll(state.bankroll, totalOnTable(state.bets));
   hud.setSession(
     `session · wagered ${fmt(session.wagered)} · net ${session.net >= 0 ? '+' : '−'}${fmt(Math.abs(session.net))}`,
@@ -221,14 +327,22 @@ new LayoutPicker(
   view.scene,
   {
     onBet(region) {
-      if (removeMode) tryRemove(region);
-      else tryBet(region);
+      tryBet(region);
     },
     onRemove(region) {
       tryRemove(region);
     },
     onHover(region, x, y) {
-      hud.tooltip(region ? region.label : null, x, y);
+      if (!region) {
+        hud.tooltip(null, x, y);
+        return;
+      }
+      const riding = region.target ? amountFor(region.target) : 0;
+      hud.tooltip(
+        riding > 0 ? `${region.label} — ${fmt(riding)} riding · ctrl+click removes` : region.label,
+        x,
+        y,
+      );
     },
   },
   // Clicks cannot bet while the camera is off the rail view or dice are
@@ -470,7 +584,7 @@ function finishRoll(r: SolveResult) {
     attempts: r.attempts,
   });
   if (stats.log.length > 30) stats.log.splice(0, stats.log.length - 30);
-  hud.setHistory(stats.log.slice(-14).map((l) => l.a + l.b));
+  hud.setHistory(stats.log.slice(-20).map((l) => l.a + l.b));
   panels.refreshStats();
 
   if (rollNet > 0) sound.win(rollNet);
@@ -556,5 +670,5 @@ async function doRoll() {
 };
 
 puck.setPoint(state.point);
-hud.setHistory(stats.log.slice(-14).map((l) => l.a + l.b));
+hud.setHistory(stats.log.slice(-20).map((l) => l.a + l.b));
 refresh();

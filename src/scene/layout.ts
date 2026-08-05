@@ -250,61 +250,6 @@ function buildRegions(): LayoutRegion[] {
     },
   );
 
-  // ---- Partial mirrored second end on the right ----------------------------
-  // Purely for the authentic double-end look; clicking maps to the same bets
-  // (chips stack on the primary end).
-  const MB = 0.74; // mirror block starts here; its numbers run 4,5 from center
-  const mCol = (i: number): Rect => ({
-    x0: MB + i * NUM_W,
-    z0: NUM_Z0,
-    x1: Math.min(1.26, MB + (i + 1) * NUM_W),
-    z1: NUM_Z1,
-  });
-  ([4, 5] as PointNumber[]).forEach((n, i) => {
-    const col = mCol(i);
-    regions.push(
-      n === 4
-        ? {
-            id: `mirror:lay:${n}`,
-            target: { kind: 'lay', number: 4 },
-            rect: { ...col, z1: LOSE_Z1 },
-            label: `Lay ${n}`,
-          }
-        : {
-            id: `mirror:noLay:${n}`,
-            target: null,
-            rect: { ...col, z1: LOSE_Z1 },
-            label: 'Lay is offered on 4 and 10 only',
-          },
-      {
-        id: `mirror:place:${n}`,
-        target: { kind: 'place', number: n },
-        rect: { ...col, z0: LOSE_Z1, z1: WIN_Z0 },
-        label: `Place ${n}`,
-      },
-      {
-        id: `mirror:place#win:${n}`,
-        target: { kind: 'place', number: n },
-        rect: { ...col, z0: WIN_Z0 },
-        label: `Place ${n}`,
-      },
-    );
-  });
-  regions.push(
-    {
-      id: 'mirror:field',
-      target: { kind: 'field' },
-      rect: { x0: MB, z0: -0.385, x1: 1.26, z1: -0.245 },
-      label: 'Field',
-    },
-    {
-      id: 'mirror:come',
-      target: { kind: 'come' },
-      rect: { x0: MB, z0: -0.23, x1: 1.26, z1: -0.075 },
-      label: 'Come',
-    },
-  );
-
   return regions;
 }
 
