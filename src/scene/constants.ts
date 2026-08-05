@@ -15,8 +15,8 @@ export const TABLE = {
   /** Visible felt slab thickness. */
   feltThickness: 0.08,
   /** Wood rail cap on top of the walls. */
-  railWidth: 0.16,
-  railHeight: 0.045,
+  railWidth: 0.2,
+  railHeight: 0.05,
 } as const;
 
 export const DICE = {

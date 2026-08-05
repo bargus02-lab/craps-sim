@@ -184,6 +184,10 @@ function tryBet(region: LayoutRegion) {
     hud.toast('No more bets — the dice are rolling');
     return;
   }
+  if (!region.target) {
+    hud.toast(region.label); // informational cell (e.g. lay only on 4/10)
+    return;
+  }
   try {
     state = placeBet(state, region.target, activeDenom);
     sound.chip();
@@ -196,6 +200,10 @@ function tryBet(region: LayoutRegion) {
 function tryRemove(region: LayoutRegion) {
   if (rolling || playback || preRoll) {
     hud.toast('No more bets — the dice are rolling');
+    return;
+  }
+  if (!region.target) {
+    hud.toast(region.label);
     return;
   }
   try {
@@ -462,6 +470,7 @@ function finishRoll(r: SolveResult) {
     attempts: r.attempts,
   });
   if (stats.log.length > 30) stats.log.splice(0, stats.log.length - 30);
+  hud.setHistory(stats.log.slice(-14).map((l) => l.a + l.b));
   panels.refreshStats();
 
   if (rollNet > 0) sound.win(rollNet);
@@ -547,4 +556,5 @@ async function doRoll() {
 };
 
 puck.setPoint(state.point);
+hud.setHistory(stats.log.slice(-14).map((l) => l.a + l.b));
 refresh();

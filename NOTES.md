@@ -234,6 +234,29 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Strip-style main view (user-requested, post-release)
+
+- **Main view**: the default betting view is now a gently tilted plan view
+  (64° elevation) framing the whole table with the wood rail — the classic
+  online-craps presentation. Distance auto-fits any aspect ratio. The throw
+  still plays from the first-person rail, and RAIL VIEW remains a toggle.
+- **Layout rebuilt in the modern Strip idiom** (all original code-drawn art):
+  deep teal felt, white serif numerals, a LOSE row (lay) above the numbers
+  and a WIN row (place) below, tone-on-tone COME, FIELD with white-circled 2
+  (PAYS DOUBLE) and 12 (PAYS TRIPLE) captioned in arced text, barred/faded
+  DON'T COME box, red DON'T PASS with dice icons plus a vertical segment
+  inside the gold PASS LINE wrap, HARDWAYS/ONE ROLL pill headers with red
+  hardway dice and white one-roll dice, SEVEN 4:1 / CRAPS 7:1, C·E and HORN,
+  and a partial mirrored second end on the right (clickable — maps to the
+  same bets; chips stack on the primary end). LOSE cells on 5/6/8/9 explain
+  via toast that the engine offers lay on 4/10 only (per the original spec).
+  Engine payouts unchanged; 12 still pays triple in the field per spec even
+  though some Strip tables pay double.
+- **Roll-history strip** across the top (last 14 totals, sevens in red),
+  BALANCE / TOTAL BET gold pills, circular ROLL button, procedural mahogany
+  wood grain on a wider rail, chips slightly over real size for plan-view
+  legibility.
+
 ## Rule decisions
 
 1. **Buy 4/10 commission** — spec says "2:1 less 5% commission" without timing.

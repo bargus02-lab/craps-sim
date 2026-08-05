@@ -1,6 +1,13 @@
 // The betting layout: one source of truth for clickable regions, chip anchor
 // points, and the painted felt art. All coordinates are world-space meters on
 // the felt plane (x along the table, z across it; player rail is +z).
+//
+// Arrangement follows modern Strip tables: a LOSE row (lay) above the point
+// numbers and a WIN row (place) below, COME and FIELD lanes, a pass line that
+// wraps the end with DON'T PASS just inside it, a center proposition block,
+// and a partial mirrored second end on the right. Mirrored/alias regions use
+// ids with a '#' or 'mirror:' prefix and map to the same engine bets; regions
+// with a null target exist only to explain themselves in a toast.
 
 import type { BetTarget, PointNumber } from '../engine/state';
 
@@ -12,9 +19,10 @@ export interface Rect {
 }
 
 export interface LayoutRegion {
-  /** Stable id matching the engine's resolution ids where applicable. */
+  /** Stable id; canonical engine ids come first, aliases use '#'/'mirror:'. */
   id: string;
-  target: BetTarget;
+  /** null = informational cell (clicking toasts the label). */
+  target: BetTarget | null;
   rect: Rect;
   /** Hover / toast label. */
   label: string;
@@ -24,11 +32,12 @@ export interface LayoutRegion {
 
 const center = (r: Rect) => ({ x: (r.x0 + r.x1) / 2, z: (r.z0 + r.z1) / 2 });
 
-// ---- Number boxes across the far side --------------------------------------
-const NUM_Z0 = -0.63;
-const NUM_Z1 = -0.4;
-const LAY_BAND = 0.055; // top strip of the 4/10 boxes
-const BUY_BAND = 0.055; // bottom strip of the 4/10 boxes
+// ---- Number columns across the far side ------------------------------------
+export const NUM_Z0 = -0.63;
+export const NUM_Z1 = -0.4;
+/** Row split: LOSE (lay) strip, the number itself, WIN (place) strip. */
+export const LOSE_Z1 = -0.572;
+export const WIN_Z0 = -0.452;
 const NUMBERS: PointNumber[] = [4, 5, 6, 8, 9, 10];
 const NUM_X0 = -1.0;
 const NUM_W = 0.28;
@@ -43,29 +52,60 @@ function buildRegions(): LayoutRegion[] {
 
   for (const n of NUMBERS) {
     const box = numberBoxRect(n);
+    const cx = (box.x0 + box.x1) / 2;
     const isBuyLay = n === 4 || n === 10;
-    const placeRect: Rect = isBuyLay
-      ? { ...box, z0: box.z0 + LAY_BAND, z1: box.z1 - BUY_BAND }
-      : box;
-    regions.push({
-      id: `place:${n}`,
-      target: { kind: 'place', number: n },
-      rect: placeRect,
-      label: `Place ${n}`,
-      anchor: { x: (box.x0 + box.x1) / 2, z: box.z1 - BUY_BAND - 0.045 },
-    });
+    const loseRect: Rect = { ...box, z1: LOSE_Z1 };
+    const numRect: Rect = { ...box, z0: LOSE_Z1, z1: WIN_Z0 };
+    const winRect: Rect = { ...box, z0: WIN_Z0 };
+
+    // LOSE row: lay bets (engine offers lay on 4 and 10 only).
     if (isBuyLay) {
       regions.push({
         id: `lay:${n}`,
         target: { kind: 'lay', number: n as 4 | 10 },
-        rect: { ...box, z1: box.z0 + LAY_BAND },
+        rect: loseRect,
         label: `Lay ${n}`,
+        anchor: { x: cx + 0.05, z: -0.601 },
       });
+    } else {
+      regions.push({
+        id: `noLay:${n}`,
+        target: null,
+        rect: loseRect,
+        label: 'Lay is offered on 4 and 10 only',
+      });
+    }
+
+    // The number itself: place bet (big target).
+    regions.push({
+      id: `place:${n}`,
+      target: { kind: 'place', number: n },
+      rect: numRect,
+      label: `Place ${n}`,
+      anchor: { x: cx, z: -0.426 },
+    });
+
+    // WIN row: place again (with a BUY tag on 4/10's left edge).
+    if (isBuyLay) {
       regions.push({
         id: `buy:${n}`,
         target: { kind: 'buy', number: n as 4 | 10 },
-        rect: { ...box, z0: box.z1 - BUY_BAND },
+        rect: { ...winRect, x1: box.x0 + 0.09 },
         label: `Buy ${n}`,
+        anchor: { x: box.x0 + 0.045, z: -0.426 },
+      });
+      regions.push({
+        id: `place#win:${n}`,
+        target: { kind: 'place', number: n },
+        rect: { ...winRect, x0: box.x0 + 0.09 },
+        label: `Place ${n}`,
+      });
+    } else {
+      regions.push({
+        id: `place#win:${n}`,
+        target: { kind: 'place', number: n },
+        rect: winRect,
+        label: `Place ${n}`,
       });
     }
   }
@@ -80,31 +120,31 @@ function buildRegions(): LayoutRegion[] {
     {
       id: 'field',
       target: { kind: 'field' },
-      rect: { x0: -1.08, z0: -0.385, x1: 0.1, z1: -0.245 },
+      rect: { x0: -1.0, z0: -0.385, x1: 0.1, z1: -0.245 },
       label: 'Field',
     },
     {
       id: 'come',
       target: { kind: 'come' },
-      rect: { x0: -1.08, z0: -0.23, x1: 0.1, z1: -0.075 },
+      rect: { x0: -1.0, z0: -0.23, x1: 0.1, z1: -0.075 },
       label: 'Come',
     },
     {
       id: 'big6',
       target: { kind: 'big6' },
-      rect: { x0: -1.06, z0: -0.045, x1: -0.9, z1: 0.015 },
+      rect: { x0: -0.98, z0: -0.045, x1: -0.84, z1: 0.015 },
       label: 'Big 6',
     },
     {
       id: 'big8',
       target: { kind: 'big8' },
-      rect: { x0: -1.06, z0: 0.015, x1: -0.9, z1: 0.075 },
+      rect: { x0: -0.98, z0: 0.015, x1: -0.84, z1: 0.075 },
       label: 'Big 8',
     },
     {
       id: 'dontPass',
       target: { kind: 'dontPass' },
-      rect: { x0: -0.88, z0: -0.045, x1: -0.14, z1: 0.075 },
+      rect: { x0: -0.82, z0: -0.045, x1: -0.14, z1: 0.075 },
       label: "Don't Pass",
     },
     {
@@ -114,6 +154,13 @@ function buildRegions(): LayoutRegion[] {
       label: "Don't Pass Odds",
     },
     {
+      // Vertical don't-pass segment just inside the pass line wrap.
+      id: 'dontPass#side',
+      target: { kind: 'dontPass' },
+      rect: { x0: -1.1, z0: -0.385, x1: -1.02, z1: 0.075 },
+      label: "Don't Pass",
+    },
+    {
       id: 'passLine',
       target: { kind: 'passLine' },
       rect: { x0: -1.26, z0: 0.1, x1: 0.1, z1: 0.26 },
@@ -121,8 +168,7 @@ function buildRegions(): LayoutRegion[] {
       anchor: { x: -0.35, z: 0.18 },
     },
     {
-      // The pass line wraps up the left end of the lanes, Vegas-style. Alias
-      // region: same bet, extra clickable surface (chips anchor on 'passLine').
+      // The pass line wraps up the left end of the lanes, Vegas-style.
       id: 'passLine2',
       target: { kind: 'passLine' },
       rect: { x0: -1.26, z0: -0.385, x1: -1.1, z1: 0.1 },
@@ -131,17 +177,13 @@ function buildRegions(): LayoutRegion[] {
     {
       id: 'passOdds',
       target: { kind: 'passOdds' },
-      rect: { x0: -0.88, z0: 0.28, x1: 0.1, z1: 0.42 },
+      rect: { x0: -0.82, z0: 0.28, x1: 0.1, z1: 0.42 },
       label: 'Pass Line Odds',
       anchor: { x: -0.35, z: 0.35 },
     },
   );
 
-  // ---- Proposition block, center-right ------------------------------------
-  // Constraints: felt beyond x ~0.7 is never visible from the rail camera, and
-  // the number boxes own z -0.63..-0.4 — so the block sits at x 0.16..0.68,
-  // strictly BELOW the numbers row and to the right of the lanes (which end at
-  // x 0.1).
+  // ---- Proposition block, center ------------------------------------------
   const PX0 = 0.16;
   const PX1 = 0.68;
   const PMID = (PX0 + PX1) / 2;
@@ -161,50 +203,105 @@ function buildRegions(): LayoutRegion[] {
     {
       id: 'prop:any7',
       target: { kind: 'prop', prop: 'any7' },
-      rect: { x0: PX0, z0: -0.105, x1: PX1, z1: -0.02 },
-      label: 'Any Seven',
+      rect: { x0: PX0, z0: -0.105, x1: PMID, z1: -0.02 },
+      label: 'Seven (any) 4:1',
+    },
+    {
+      id: 'prop:anyCraps',
+      target: { kind: 'prop', prop: 'anyCraps' },
+      rect: { x0: PMID, z0: -0.105, x1: PX1, z1: -0.02 },
+      label: 'Any Craps 7:1',
     },
     {
       id: 'prop:aces',
       target: { kind: 'prop', prop: 'aces' },
       rect: { x0: PX0, z0: -0.02, x1: PMID, z1: 0.1 },
-      label: 'Aces (2)',
-    },
-    {
-      id: 'prop:boxcars',
-      target: { kind: 'prop', prop: 'boxcars' },
-      rect: { x0: PMID, z0: -0.02, x1: PX1, z1: 0.1 },
-      label: 'Boxcars (12)',
+      label: 'Aces (2) 30:1',
     },
     {
       id: 'prop:aceDeuce',
       target: { kind: 'prop', prop: 'aceDeuce' },
-      rect: { x0: PX0, z0: 0.1, x1: PMID, z1: 0.22 },
-      label: 'Ace-Deuce (3)',
+      rect: { x0: PMID, z0: -0.02, x1: PX1, z1: 0.1 },
+      label: 'Ace-Deuce (3) 15:1',
     },
     {
       id: 'prop:yo',
       target: { kind: 'prop', prop: 'yo' },
+      rect: { x0: PX0, z0: 0.1, x1: PMID, z1: 0.22 },
+      label: 'Yo (11) 15:1',
+    },
+    {
+      id: 'prop:boxcars',
+      target: { kind: 'prop', prop: 'boxcars' },
       rect: { x0: PMID, z0: 0.1, x1: PX1, z1: 0.22 },
-      label: 'Yo (11)',
-    },
-    {
-      id: 'prop:anyCraps',
-      target: { kind: 'prop', prop: 'anyCraps' },
-      rect: { x0: PX0, z0: 0.22, x1: PX1, z1: 0.3 },
-      label: 'Any Craps',
-    },
-    {
-      id: 'prop:horn',
-      target: { kind: 'prop', prop: 'horn' },
-      rect: { x0: PX0, z0: 0.3, x1: PMID, z1: 0.42 },
-      label: 'Horn',
+      label: 'Boxcars (12) 30:1',
     },
     {
       id: 'prop:cAndE',
       target: { kind: 'prop', prop: 'cAndE' },
-      rect: { x0: PMID, z0: 0.3, x1: PX1, z1: 0.42 },
+      rect: { x0: PX0, z0: 0.22, x1: PMID, z1: 0.34 },
       label: 'C & E',
+    },
+    {
+      id: 'prop:horn',
+      target: { kind: 'prop', prop: 'horn' },
+      rect: { x0: PMID, z0: 0.22, x1: PX1, z1: 0.34 },
+      label: 'Horn',
+    },
+  );
+
+  // ---- Partial mirrored second end on the right ----------------------------
+  // Purely for the authentic double-end look; clicking maps to the same bets
+  // (chips stack on the primary end).
+  const MB = 0.74; // mirror block starts here; its numbers run 4,5 from center
+  const mCol = (i: number): Rect => ({
+    x0: MB + i * NUM_W,
+    z0: NUM_Z0,
+    x1: Math.min(1.26, MB + (i + 1) * NUM_W),
+    z1: NUM_Z1,
+  });
+  ([4, 5] as PointNumber[]).forEach((n, i) => {
+    const col = mCol(i);
+    regions.push(
+      n === 4
+        ? {
+            id: `mirror:lay:${n}`,
+            target: { kind: 'lay', number: 4 },
+            rect: { ...col, z1: LOSE_Z1 },
+            label: `Lay ${n}`,
+          }
+        : {
+            id: `mirror:noLay:${n}`,
+            target: null,
+            rect: { ...col, z1: LOSE_Z1 },
+            label: 'Lay is offered on 4 and 10 only',
+          },
+      {
+        id: `mirror:place:${n}`,
+        target: { kind: 'place', number: n },
+        rect: { ...col, z0: LOSE_Z1, z1: WIN_Z0 },
+        label: `Place ${n}`,
+      },
+      {
+        id: `mirror:place#win:${n}`,
+        target: { kind: 'place', number: n },
+        rect: { ...col, z0: WIN_Z0 },
+        label: `Place ${n}`,
+      },
+    );
+  });
+  regions.push(
+    {
+      id: 'mirror:field',
+      target: { kind: 'field' },
+      rect: { x0: MB, z0: -0.385, x1: 1.26, z1: -0.245 },
+      label: 'Field',
+    },
+    {
+      id: 'mirror:come',
+      target: { kind: 'come' },
+      rect: { x0: MB, z0: -0.23, x1: 1.26, z1: -0.075 },
+      label: 'Come',
     },
   );
 
@@ -235,16 +332,16 @@ export function anchorForBetId(id: string): { x: number; z: number } {
     const box = numberBoxRect(n);
     const cx = (box.x0 + box.x1) / 2;
     // Come side sits left of the box center, don't-come side right; the puck
-    // parks at the top-right corner, clear of all four anchors.
+    // parks at the top-left corner, clear of all four anchors.
     switch (m[1]) {
       case 'comePoint':
-        return { x: cx - 0.08, z: -0.5 };
+        return { x: cx - 0.08, z: -0.525 };
       case 'comeOdds':
-        return { x: cx - 0.08, z: -0.435 };
+        return { x: cx - 0.08, z: -0.472 };
       case 'dontComePoint':
-        return { x: cx + 0.08, z: -0.5 };
+        return { x: cx + 0.08, z: -0.525 };
       case 'dontComeOdds':
-        return { x: cx + 0.08, z: -0.435 };
+        return { x: cx + 0.08, z: -0.472 };
     }
   }
   return { x: 0, z: 0.55 }; // should not happen; park unknown ids by the rail
@@ -266,9 +363,9 @@ export function oddsRegionsFor(
     out.push({
       id: `comeOdds:${n}`,
       target: { kind: 'comeOdds', number: n },
-      rect: { x0: cx - 0.135, z0: -0.555, x1: cx - 0.025, z1: -0.4 },
+      rect: { x0: cx - 0.135, z0: -0.56, x1: cx - 0.025, z1: -0.43 },
       label: `Come Odds ${n}`,
-      anchor: { x: cx - 0.08, z: -0.435 },
+      anchor: { x: cx - 0.08, z: -0.472 },
     });
   }
   for (const n of dontComeNumbers) {
@@ -277,9 +374,9 @@ export function oddsRegionsFor(
     out.push({
       id: `dontComeOdds:${n}`,
       target: { kind: 'dontComeOdds', number: n },
-      rect: { x0: cx + 0.025, z0: -0.555, x1: cx + 0.135, z1: -0.4 },
+      rect: { x0: cx + 0.025, z0: -0.56, x1: cx + 0.135, z1: -0.43 },
       label: `Don't Come Odds ${n}`,
-      anchor: { x: cx + 0.08, z: -0.435 },
+      anchor: { x: cx + 0.08, z: -0.472 },
     });
   }
   return out;

@@ -7,15 +7,53 @@ import * as THREE from 'three';
 import { TABLE } from './constants';
 import { paintLayout } from './layout-texture';
 
+/** Procedural mahogany: warm base with soft darker grain streaks. */
+function woodTexture(): THREE.CanvasTexture {
+  const c = document.createElement('canvas');
+  c.width = 1024;
+  c.height = 256;
+  const ctx = c.getContext('2d')!;
+  const g = ctx.createLinearGradient(0, 0, 0, 256);
+  g.addColorStop(0, '#6e4426');
+  g.addColorStop(0.5, '#5e3820');
+  g.addColorStop(1, '#69401f');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, 1024, 256);
+  for (let i = 0; i < 90; i++) {
+    const y = Math.random() * 256;
+    const amp = 2 + Math.random() * 5;
+    const alpha = 0.05 + Math.random() * 0.09;
+    ctx.strokeStyle = `rgba(28, 14, 6, ${alpha})`;
+    ctx.lineWidth = 0.8 + Math.random() * 2.2;
+    ctx.beginPath();
+    for (let x = 0; x <= 1024; x += 16) {
+      const yy = y + Math.sin(x * 0.012 + i) * amp;
+      if (x === 0) ctx.moveTo(x, yy);
+      else ctx.lineTo(x, yy);
+    }
+    ctx.stroke();
+  }
+  const tex = new THREE.CanvasTexture(c);
+  tex.colorSpace = THREE.SRGBColorSpace;
+  tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+  tex.repeat.set(2, 1);
+  tex.anisotropy = 8;
+  return tex;
+}
+
 export function buildTable(): THREE.Group {
   const group = new THREE.Group();
   const { feltHalfX, feltHalfZ, wallHeight, wallThickness: wt, feltThickness, railWidth, railHeight } =
     TABLE;
 
-  const feltSideMat = new THREE.MeshStandardMaterial({ color: '#113f29', roughness: 0.95 });
-  const padMat = new THREE.MeshStandardMaterial({ color: '#45291a', roughness: 0.62 });
-  const woodMat = new THREE.MeshStandardMaterial({ color: '#7a5433', roughness: 0.42 });
-  const skirtMat = new THREE.MeshStandardMaterial({ color: '#17100b', roughness: 0.9 });
+  const feltSideMat = new THREE.MeshStandardMaterial({ color: '#0e4038', roughness: 0.95 });
+  const padMat = new THREE.MeshStandardMaterial({ color: '#3c2416', roughness: 0.58 });
+  const woodMat = new THREE.MeshStandardMaterial({
+    map: woodTexture(),
+    roughness: 0.3,
+    metalness: 0.05,
+  });
+  const skirtMat = new THREE.MeshStandardMaterial({ color: '#170f0a', roughness: 0.85 });
 
   // Felt slab body (its top face sits just below the printed layout plane).
   const felt = new THREE.Mesh(

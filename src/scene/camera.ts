@@ -75,20 +75,27 @@ export class RailCamera {
     this.update(0);
   }
 
+  private overheadDist = 3;
+
   private computeOverhead(aspect: number) {
+    // Not straight down: a gently tilted plan view (the "main view"), like a
+    // player leaning over the table — whole layout visible with perspective.
+    const elevation = THREE.MathUtils.degToRad(64);
     const hfov = THREE.MathUtils.degToRad(CAMERA.horizontalFov);
     const vfov = THREE.MathUtils.degToRad(verticalFov(aspect));
-    // Half extents of the printed felt plus a small margin.
-    const hx = TABLE.feltHalfX + TABLE.wallThickness + 0.1;
-    const hz = TABLE.feltHalfZ + TABLE.wallThickness + 0.1;
-    const height = Math.max(hx / Math.tan(hfov / 2), hz / Math.tan(vfov / 2)) + 0.06;
-    this.overheadPos.set(0, height, 0.0001);
-    // Straight down, far side of the table at the top of the screen.
-    const m = new THREE.Matrix4().lookAt(
-      this.overheadPos,
-      new THREE.Vector3(0, 0, 0),
-      new THREE.Vector3(0, 0, -1),
-    );
+    // Half extents of felt + wood rail, with margin. Depth foreshortens by
+    // sin(elevation) in view space.
+    const hx = TABLE.feltHalfX + TABLE.wallThickness + TABLE.railWidth + 0.1;
+    const hz = TABLE.feltHalfZ + TABLE.wallThickness + TABLE.railWidth + 0.12;
+    const dW = hx / Math.tan(hfov / 2);
+    const dH = (hz * Math.sin(elevation) + 0.1) / Math.tan(vfov / 2);
+    const d = Math.max(dW, dH) + 0.08;
+    this.overheadDist = d;
+
+    const target = new THREE.Vector3(0, 0, -0.02);
+    const dir = new THREE.Vector3(0, -Math.sin(elevation), -Math.cos(elevation));
+    this.overheadPos.copy(target).addScaledVector(dir, -d);
+    const m = new THREE.Matrix4().lookAt(this.overheadPos, target, new THREE.Vector3(0, 1, 0));
     this.overheadQuat.setFromRotationMatrix(m);
   }
 
@@ -96,9 +103,9 @@ export class RailCamera {
     return this.viewMode;
   }
 
-  /** Camera-to-table distance of the overhead view (for depth-of-field focus). */
+  /** Camera-to-table distance of the main view (for depth-of-field focus). */
   get overheadHeight(): number {
-    return this.overheadPos.y;
+    return this.overheadDist;
   }
 
   setMode(mode: ViewMode) {

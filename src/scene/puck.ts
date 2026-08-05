@@ -63,7 +63,7 @@ export class Puck {
     } else {
       const box = numberBoxRect(n);
       const cx = (box.x0 + box.x1) / 2;
-      this.targetPos.set(cx + 0.09, HEIGHT / 2 + 0.001, -0.6);
+      this.targetPos.set(cx - 0.09, HEIGHT / 2 + 0.001, -0.603);
       this.targetFlip = 0; // ON face up
     }
   }

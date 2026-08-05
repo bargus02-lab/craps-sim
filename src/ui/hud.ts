@@ -38,7 +38,11 @@ export class Hud {
     root.insertAdjacentHTML(
       'beforeend',
       `<div id="hud">
-        <div id="bank"><span id="bankroll"></span><span id="ontable"></span></div>
+        <div id="bank">
+          <div class="pill"><span class="pill-label">BALANCE</span><span id="bankroll"></span></div>
+          <div class="pill"><span class="pill-label">TOTAL BET</span><span id="ontable"></span></div>
+        </div>
+        <div id="history"></div>
         <div id="result"></div>
         <div id="rollnet"></div>
         <div id="breakdown"></div>
@@ -57,10 +61,20 @@ export class Hud {
       <style>
         #hud { position: fixed; inset: 0; pointer-events: none; user-select: none;
                font-family: 'Avenir Next', 'Segoe UI', sans-serif; color: #f0e9d6; }
-        #bank { position: absolute; top: 1rem; left: 1.2rem; display: flex; flex-direction: column;
-                gap: 2px; text-shadow: 0 2px 8px #000; }
-        #bankroll { font-size: 1.5rem; font-weight: 700; letter-spacing: 0.04em; }
-        #ontable { font-size: 0.85rem; color: #b8c0a8; }
+        #bank { position: absolute; bottom: 2.2vh; left: 1.2rem; display: flex; gap: 10px; }
+        #bank .pill { display: flex; flex-direction: column; align-items: center; min-width: 110px;
+                      padding: 5px 16px; border: 1.5px solid #c8a45a; border-radius: 999px;
+                      background: rgba(10, 12, 10, 0.78); }
+        #bank .pill-label { font-size: 0.58rem; letter-spacing: 0.22em; color: #c8a45a; }
+        #bankroll, #ontable { font-size: 1.05rem; font-weight: 700; letter-spacing: 0.03em; }
+        #history { position: absolute; top: 0.7rem; left: 50%; transform: translateX(-50%);
+                   display: flex; gap: 6px; align-items: center; }
+        #history .h { width: 26px; height: 26px; border-radius: 50%; display: flex;
+                      align-items: center; justify-content: center; font-size: 12px; font-weight: 700;
+                      background: rgba(240, 236, 224, 0.88); color: #23241f;
+                      box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
+        #history .h.seven { background: #b8352c; color: #f5f0df; }
+        #history .h:last-child { outline: 2px solid #e8c476; outline-offset: 1px; }
         #result { position: absolute; top: 4vh; width: 100%; text-align: center; font-size: 2rem;
                   text-shadow: 0 2px 10px #000; letter-spacing: 0.06em; min-height: 2.4rem; }
         #toast { position: absolute; bottom: 118px; width: 100%; text-align: center;
@@ -122,11 +136,15 @@ export class Hud {
           #breakdown { top: 12rem; }
           #fair { max-width: 60vw; }
           #session { top: 4.6rem; }
+          /* Keep the money pills clear of the wrapped chip rail. */
+          #bank { bottom: auto; top: 3.4rem; flex-direction: column; gap: 6px; }
         }
-        #roll { pointer-events: auto; padding: 0.8em 2.6em; font-size: 1rem; letter-spacing: 0.25em;
-                color: #f3e9d5; background: #7a1520; border: 1px solid #c8a45a;
-                border-radius: 999px; cursor: pointer; }
-        #roll:hover:not(:disabled) { background: #93202c; }
+        #roll { pointer-events: auto; width: 86px; height: 86px; border-radius: 50%;
+                font-size: 0.92rem; letter-spacing: 0.14em; font-weight: 700;
+                color: #f3e9d5; background: radial-gradient(circle at 35% 30%, #2c2e33, #17181c 70%);
+                border: 3px solid #c8a45a; cursor: pointer;
+                box-shadow: 0 6px 16px rgba(0,0,0,0.6), inset 0 0 0 6px rgba(200,164,90,0.12); }
+        #roll:hover:not(:disabled) { background: radial-gradient(circle at 35% 30%, #3a3d44, #1d1f24 70%); }
         #roll:disabled { opacity: 0.45; cursor: default; }
         #fair { position: absolute; right: 1rem; top: 0.8rem; text-align: right;
                 font: 11px ui-monospace, monospace; color: #6d7a86; max-width: 40vw; }
@@ -212,6 +230,13 @@ export class Hud {
   /** Sync the rail keep-winnings button (e.g. when changed from settings). */
   setKeepActive(active: boolean) {
     document.getElementById('keepBtn')!.classList.toggle('active', active);
+  }
+
+  /** Roll-history strip: recent totals, sevens in red, newest highlighted. */
+  setHistory(totals: number[]) {
+    document.getElementById('history')!.innerHTML = totals
+      .map((t) => `<span class="h${t === 7 ? ' seven' : ''}">${t}</span>`)
+      .join('');
   }
 
   setBankroll(bankroll: number, onTable: number) {

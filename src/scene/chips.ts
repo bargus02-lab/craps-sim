@@ -24,8 +24,9 @@ export const CHIP_STYLE: Record<ChipDenom, { base: string; accent: string; text:
   100: { base: '#1d1d21', accent: '#f2ecdd', text: '#f2ecdd' },
 };
 
-export const CHIP_RADIUS = 0.019;
-export const CHIP_HEIGHT = 0.0036;
+// Slightly over real size (39 mm) so stacks stay readable from the plan view.
+export const CHIP_RADIUS = 0.0225;
+export const CHIP_HEIGHT = 0.0042;
 const MAX_PER_DENOM = 256;
 const MAX_STACK = 14; // taller piles split into adjacent columns
 

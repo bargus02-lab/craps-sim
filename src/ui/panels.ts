@@ -39,6 +39,9 @@ export class Panels {
       <style>
         #panelBtns { position: fixed; top: 5.2rem; left: 1.2rem; display: flex;
                      flex-direction: column; gap: 8px; z-index: 6; }
+        @media (max-width: 900px) {
+          #panelBtns { top: 11.4rem; }
+        }
         #panelBtns button { pointer-events: auto; padding: 0.45em 1em; font: 700 0.68rem 'Avenir Next', sans-serif;
                             letter-spacing: 0.18em; color: #cdd6c8; background: rgba(16, 22, 18, 0.8);
                             border: 1px solid #38443c; border-radius: 8px; cursor: pointer; }
