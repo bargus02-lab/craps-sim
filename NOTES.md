@@ -234,6 +234,19 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 7 — chip styling + HUD polish (user-requested)
+
+- **Stack-total discs inverted**: the disc is now the chip's own color with a
+  white ring and white number ($25 stack → green disc, white "25"); the
+  near-white $1 keeps dark ink.
+- **Dock chips match the table chips**: colored face with accent edge spots
+  (conic-gradient) and a solid center — the same design as the 3D chips.
+- **ROLL button**: gold ring + inner dashed ring over deep felt green, a
+  slow pulsing gold glow (faster on hover), scales up on hover and squishes
+  on press.
+- **TOTAL BET pill** shows just the amount ("$90"), no prefix text.
+- **HARDWAYS / ONE ROLL pill headers** are now fully opaque.
+
 ## Round 6 — lay-odds fix + performance (user-requested)
 
 - **Don't pass odds bug fixed**: $25 don't pass at point 4 previously allowed

@@ -187,26 +187,27 @@ export class ChipRenderer {
   private discPool: THREE.Mesh[] = [];
   private discTexCache = new Map<string, THREE.CanvasTexture>();
 
-  private discTexture(total: number, color: string): THREE.CanvasTexture {
-    const key = `${total}:${color}`;
+  private discTexture(total: number, base: string, ink: string): THREE.CanvasTexture {
+    const key = `${total}:${base}:${ink}`;
     const cached = this.discTexCache.get(key);
     if (cached) return cached;
     const c = document.createElement('canvas');
     c.width = c.height = 256;
     const ctx = c.getContext('2d')!;
     ctx.clearRect(0, 0, 256, 256);
-    ctx.fillStyle = '#f4f1e6';
+    // Inverted look: the disc IS the chip color, numbers in white ink.
+    ctx.fillStyle = base;
     ctx.beginPath();
     ctx.arc(128, 128, 124, 0, Math.PI * 2);
     ctx.fill();
-    ctx.strokeStyle = color;
-    ctx.lineWidth = 10;
+    ctx.strokeStyle = ink;
+    ctx.lineWidth = 9;
     ctx.beginPath();
-    ctx.arc(128, 128, 106, 0, Math.PI * 2);
+    ctx.arc(128, 128, 108, 0, Math.PI * 2);
     ctx.stroke();
     const label = `${Math.round(total)}`;
     const size = label.length <= 2 ? 118 : label.length === 3 ? 92 : label.length === 4 ? 72 : 58;
-    ctx.fillStyle = color;
+    ctx.fillStyle = ink;
     ctx.font = `800 ${size}px 'Avenir Next', Arial, sans-serif`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -218,7 +219,15 @@ export class ChipRenderer {
     return tex;
   }
 
-  private placeDisc(index: number, x: number, z: number, y: number, total: number, color: string) {
+  private placeDisc(
+    index: number,
+    x: number,
+    z: number,
+    y: number,
+    total: number,
+    base: string,
+    ink: string,
+  ) {
     let disc = this.discPool[index];
     if (!disc) {
       disc = new THREE.Mesh(
@@ -229,7 +238,7 @@ export class ChipRenderer {
       this.discPool[index] = disc;
       this.group.add(disc);
     }
-    (disc.material as THREE.MeshBasicMaterial).map = this.discTexture(total, color);
+    (disc.material as THREE.MeshBasicMaterial).map = this.discTexture(total, base, ink);
     (disc.material as THREE.MeshBasicMaterial).needsUpdate = true;
     disc.position.set(x, y, z);
     disc.visible = true;
@@ -267,14 +276,16 @@ export class ChipRenderer {
       // Total disc rides the top chip of the first column.
       const topCount = Math.min(chips.length, MAX_STACK);
       const topDenom = chips[topCount - 1];
-      // The white $1 face needs a darker ink or the number vanishes.
-      const ink = topDenom === 1 ? '#7d7662' : CHIP_STYLE[topDenom].base;
+      // Disc wears the chip's own color; the near-white $1 keeps dark ink.
+      const base = CHIP_STYLE[topDenom].base;
+      const ink = topDenom === 1 ? '#5f5949' : '#f4f1e6';
       this.placeDisc(
         discIndex++,
         anchor.x,
         anchor.z,
         0.001 + (topCount - 1) * (CHIP_HEIGHT * 1.04) + CHIP_HEIGHT + 0.0006,
         amount,
+        base,
         ink,
       );
 

@@ -172,16 +172,27 @@ export class Hud {
           /* Keep the money pills clear of the wrapped chip rail. */
           #bank { bottom: auto; top: 3.4rem; flex-direction: column; gap: 6px; }
         }
-        #roll { pointer-events: auto; width: 108px; height: 108px; border-radius: 50%;
-                font-size: 1.1rem; letter-spacing: 0.14em; font-weight: 700;
-                color: #eafbef; background: radial-gradient(circle at 35% 30%, #1d3a2c, #0d1b14 72%);
-                border: 3px solid #3fae6a; cursor: pointer;
-                box-shadow: 0 6px 18px rgba(0,0,0,0.65), 0 0 22px rgba(63, 174, 106, 0.35),
-                            inset 0 0 0 6px rgba(63, 174, 106, 0.16); }
-        #roll:hover:not(:disabled) { background: radial-gradient(circle at 35% 30%, #275341, #12261b 72%);
-                box-shadow: 0 6px 18px rgba(0,0,0,0.65), 0 0 30px rgba(63, 174, 106, 0.55),
-                            inset 0 0 0 6px rgba(63, 174, 106, 0.2); }
-        #roll:disabled { opacity: 0.45; cursor: default; }
+        #roll { pointer-events: auto; width: 112px; height: 112px; border-radius: 50%;
+                font-size: 1.18rem; letter-spacing: 0.16em; font-weight: 800;
+                color: #fdf8e7; cursor: pointer; position: relative;
+                background: radial-gradient(circle at 35% 28%, #2e6a45, #123524 55%, #081711 100%);
+                border: 3.5px solid #e3c05c;
+                text-shadow: 0 2px 8px rgba(0,0,0,0.8);
+                animation: rollGlow 2.1s ease-in-out infinite;
+                transition: transform 0.12s ease; }
+        #roll::after { content: ''; position: absolute; inset: 7px; border-radius: 50%;
+                       border: 1.5px dashed rgba(227, 192, 92, 0.55); pointer-events: none; }
+        #roll:hover:not(:disabled) { transform: scale(1.08);
+                background: radial-gradient(circle at 35% 28%, #3c8a5a, #17452f 55%, #0a1d15 100%);
+                animation-duration: 1.1s; }
+        #roll:active:not(:disabled) { transform: scale(0.95); }
+        #roll:disabled { opacity: 0.45; cursor: default; animation: none; }
+        @keyframes rollGlow {
+          0%, 100% { box-shadow: 0 6px 18px rgba(0,0,0,0.65), 0 0 16px rgba(227, 192, 92, 0.3),
+                                 inset 0 0 14px rgba(63, 174, 106, 0.25); }
+          50% { box-shadow: 0 6px 18px rgba(0,0,0,0.65), 0 0 34px rgba(227, 192, 92, 0.65),
+                            inset 0 0 20px rgba(63, 174, 106, 0.4); }
+        }
         #fair { position: absolute; right: 1rem; top: 0.8rem; text-align: right;
                 font: 11px ui-monospace, monospace; color: #6d7a86; max-width: 40vw; }
       </style>`,
@@ -200,7 +211,16 @@ export class Hud {
       const style = CHIP_STYLE[d];
       const btn = document.createElement('button');
       btn.className = `chip ${d === 1 ? 'light' : 'dark'}`;
-      btn.style.background = style.base;
+      // Same design as the 3D chips: colored face with accent edge spots
+      // (conic ring) and a solid center disc.
+      const spots: string[] = [];
+      for (let i = 0; i < 6; i++) {
+        const a0 = i * 60 - 13;
+        spots.push(`${style.accent} ${a0}deg ${a0 + 26}deg`, `${style.base} ${a0 + 26}deg ${a0 + 47}deg`);
+      }
+      btn.style.background =
+        `radial-gradient(circle, ${style.base} 60%, transparent 61%), ` +
+        `conic-gradient(${spots.join(', ')})`;
       btn.style.color = style.text;
       btn.textContent = `${d}`;
       btn.dataset.denom = `${d}`;
@@ -325,7 +345,7 @@ export class Hud {
 
   setBankroll(bankroll: number, onTable: number) {
     this.bankrollEl.textContent = fmt(bankroll);
-    this.onTableEl.textContent = `on table ${fmt(onTable)}`;
+    this.onTableEl.textContent = fmt(onTable);
   }
 
   setResult(text: string) {

@@ -213,7 +213,7 @@ function pill(ctx: CanvasRenderingContext2D, str: string, x: number, z: number, 
   const h = 38;
   ctx.strokeStyle = LINE;
   ctx.lineWidth = 2.5;
-  ctx.fillStyle = 'rgba(10, 48, 40, 0.85)';
+  ctx.fillStyle = '#0a3028'; // fully solid — no felt bleed-through
   ctx.beginPath();
   ctx.roundRect(cx - wPx / 2, cy - h / 2, wPx, h, h / 2);
   ctx.fill();
