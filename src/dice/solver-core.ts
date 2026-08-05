@@ -115,7 +115,8 @@ function launchDice(dice: [CANNON.Body, CANNON.Body], rand: () => number) {
   const zBase = 0.16 + rand() * 0.2;
 
   dice.forEach((body, i) => {
-    const x = TABLE.feltHalfX - 0.38 + (rand() - 0.5) * 0.1;
+    // Launch from just inside the framed view's right edge.
+    const x = TABLE.feltHalfX - 0.52 + (rand() - 0.5) * 0.1;
     const y = 0.16 + rand() * 0.15;
     const z = zBase + i * (0.09 + rand() * 0.06) + (rand() - 0.5) * 0.05;
     body.position.set(x, y, z);
@@ -164,6 +165,7 @@ function settledFace(d: CANNON.Body): Die | null {
   if (face === null) return null;
   if (Math.abs(d.position.y - DICE.half) > 0.004) return null; // cocked / stacked
   if (Math.abs(d.position.x) > TABLE.feltHalfX - 0.02) return null;
+  if (d.position.x > SOLVER.restMaxX) return null; // must rest inside the framed view
   if (Math.abs(d.position.z) > TABLE.feltHalfZ - 0.02) return null;
   return face;
 }

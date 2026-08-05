@@ -33,8 +33,8 @@ export interface StatsData {
   handle: number;
   net: number;
   totalRolls: number;
-  /** Recent rolls for the fairness log. */
-  log: Array<{ n: number; a: number; b: number; seed: string; attempts: number }>;
+  /** Recent rolls for the fairness log. `pm` marks a made point. */
+  log: Array<{ n: number; a: number; b: number; seed: string; attempts: number; pm?: boolean }>;
 }
 
 export interface SessionTotals {
@@ -173,6 +173,7 @@ function normStats(s: unknown): StatsData {
         b: num(x.b, 1),
         seed: typeof x.seed === 'string' ? x.seed : '?',
         attempts: num(x.attempts),
+        pm: x.pm === true,
       }));
   }
   return e;

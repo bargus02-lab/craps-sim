@@ -40,6 +40,9 @@ export const SOLVER = {
   flatCosTol: 0.9995,
   /** Dice must come to rest within this distance of each other (real throws cluster). */
   maxSeparation: 0.5,
+  /** Dice must settle left of this x so they always rest inside the framed
+   *  main view (which crops the shooter's apron on the right). */
+  restMaxX: 0.78,
 } as const;
 
 /**

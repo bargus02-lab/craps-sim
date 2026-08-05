@@ -82,7 +82,10 @@ export class Hud {
                       background: rgba(240, 236, 224, 0.88); color: #23241f;
                       box-shadow: 0 2px 6px rgba(0,0,0,0.5); }
         #history .h.seven { background: #b8352c; color: #f5f0df; }
+        #history .h.point { background: #1e8c4f; color: #f2fbef; }
         #history .h:last-child { outline: 2px solid #e8c476; outline-offset: 1px; }
+        #result { display: flex; align-items: center; justify-content: center; gap: 10px; }
+        #result .dr { width: 36px; height: 36px; filter: drop-shadow(0 3px 5px rgba(0,0,0,0.6)); }
         #result { position: absolute; top: 4vh; width: 100%; text-align: center; font-size: 2rem;
                   text-shadow: 0 2px 10px #000; letter-spacing: 0.06em; min-height: 2.4rem; }
         #toast { position: absolute; bottom: 118px; width: 100%; text-align: center;
@@ -336,10 +339,13 @@ export class Hud {
     document.getElementById('keepBtn')!.classList.toggle('active', active);
   }
 
-  /** Roll-history strip: recent totals, sevens in red, newest highlighted. */
-  setHistory(totals: number[]) {
-    document.getElementById('history')!.innerHTML = totals
-      .map((t) => `<span class="h${t === 7 ? ' seven' : ''}">${t}</span>`)
+  /** Roll-history strip: sevens red, made points green, newest highlighted. */
+  setHistory(items: Array<{ t: number; kind: 'seven' | 'point' | 'normal' }>) {
+    document.getElementById('history')!.innerHTML = items
+      .map(
+        (i) =>
+          `<span class="h${i.kind === 'seven' ? ' seven' : i.kind === 'point' ? ' point' : ''}">${i.t}</span>`,
+      )
       .join('');
   }
 
@@ -348,8 +354,58 @@ export class Hud {
     this.onTableEl.textContent = fmt(onTable);
   }
 
-  setResult(text: string) {
-    this.resultEl.textContent = text;
+  /** Result line, with the two rolled faces drawn as mini dice so the
+   *  numbers are always readable regardless of camera distance. */
+  setResult(text: string, dice?: [number, number]) {
+    if (!text) {
+      this.resultEl.innerHTML = '';
+      return;
+    }
+    const icons = dice ? dice.map((n) => Hud.dieSvg(n)).join('') : '';
+    this.resultEl.innerHTML = `${icons}<span>${text}</span>`;
+  }
+
+  private static dieSvg(n: number): string {
+    const off = 27;
+    const c = 50;
+    const spots: Record<number, Array<[number, number]>> = {
+      1: [[c, c]],
+      2: [
+        [c - off, c - off],
+        [c + off, c + off],
+      ],
+      3: [
+        [c - off, c - off],
+        [c, c],
+        [c + off, c + off],
+      ],
+      4: [
+        [c - off, c - off],
+        [c + off, c - off],
+        [c - off, c + off],
+        [c + off, c + off],
+      ],
+      5: [
+        [c - off, c - off],
+        [c + off, c - off],
+        [c, c],
+        [c - off, c + off],
+        [c + off, c + off],
+      ],
+      6: [
+        [c - off, c - off],
+        [c + off, c - off],
+        [c - off, c],
+        [c + off, c],
+        [c - off, c + off],
+        [c + off, c + off],
+      ],
+    };
+    const dots = (spots[n] ?? [])
+      .map(([x, y]) => `<circle cx="${x}" cy="${y}" r="9.5" fill="#f7f3e6"/>`)
+      .join('');
+    return `<svg class="dr" viewBox="0 0 100 100" aria-label="die ${n}">
+      <rect x="4" y="4" width="92" height="92" rx="20" fill="#c33a2c" stroke="#7e1f18" stroke-width="4"/>${dots}</svg>`;
   }
 
   setFairness(text: string) {

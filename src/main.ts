@@ -504,6 +504,15 @@ function betLabel(id: string): string {
   return id;
 }
 
+/** History bubble style: red sevens, green made points. */
+function historyItem(l: StatsData['log'][number]): {
+  t: number;
+  kind: 'seven' | 'point' | 'normal';
+} {
+  const t = l.a + l.b;
+  return { t, kind: t === 7 ? 'seven' : l.pm ? 'point' : 'normal' };
+}
+
 function eventText(event: RollEvent, total: number): string {
   switch (event) {
     case 'pointEstablished':
@@ -704,15 +713,16 @@ function finishRoll(r: SolveResult) {
     b,
     seed: `0x${r.seed.toString(16).padStart(8, '0')}`,
     attempts: r.attempts,
+    pm: out.event === 'pointMade',
   });
   if (stats.log.length > 30) stats.log.splice(0, stats.log.length - 30);
-  hud.setHistory(stats.log.slice(-20).map((l) => l.a + l.b));
+  hud.setHistory(stats.log.slice(-20).map(historyItem));
   panels.refreshStats();
 
   if (rollNet > 0) sound.win(rollNet);
 
   const evt = eventText(out.event, total);
-  hud.setResult(`${a} + ${b} = ${total}${evt ? '  ·  ' + evt : ''}`);
+  hud.setResult(`${a} + ${b} = ${total}${evt ? '  ·  ' + evt : ''}`, [a, b]);
   hud.flashNumber(total);
   hud.showRollOutcome(
     entries.length
@@ -783,5 +793,5 @@ async function doRoll() {
 };
 
 puck.setPoint(state.point);
-hud.setHistory(stats.log.slice(-20).map((l) => l.a + l.b));
+hud.setHistory(stats.log.slice(-20).map(historyItem));
 refresh();

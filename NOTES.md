@@ -234,6 +234,18 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 8 — dice visibility + history points (user-requested)
+
+- **Dice never leave the frame**: the solver now rejects any settle right of
+  x = 0.78 (the framed view's right edge) and the launch point moved inside
+  the frame — verified over 24 live rolls (max rest x 0.38). Median solve
+  cost stays ~290 ms single-threaded across all targets.
+- **Readable roll faces**: the result line draws the two rolled faces as red
+  mini-dice icons next to the total, so the numbers are legible regardless of
+  camera distance.
+- **History strip**: a made point lights its bubble green (persisted via a
+  `pm` flag on the roll log), joining the red sevens.
+
 ## Round 7 — chip styling + HUD polish (user-requested)
 
 - **Stack-total discs inverted**: the disc is now the chip's own color with a
