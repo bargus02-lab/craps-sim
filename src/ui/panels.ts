@@ -188,7 +188,9 @@ export class Panels {
           <option value="10">10x</option>
           <option value="100">100x</option>
         </select></div>
-      <div class="note">Don't-side odds are capped by potential win. Rule changes apply to new bets/rolls.</div>
+      <div class="note">3-4-5x lets the don't side lay up to 6× the flat bet (winning 3x/4x/5x by
+      point); N× games cap the don't side's potential win at N× the flat. Rule changes apply to
+      new bets/rolls.</div>
       <h3>EXPERIENCE</h3>
       <div class="setrow"><span>Sound</span>${sw('swSound', prefs.sound)}</div>
       <div class="setrow"><span>Depth of field</span>${sw('swDof', prefs.dof)}</div>

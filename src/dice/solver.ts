@@ -46,8 +46,9 @@ export class DiceSolver {
 
   /**
    * Solve a trajectory for the given pre-drawn target. All workers search in
-   * parallel from independent seeds; losers are terminated and respawned so a
-   * long-running search never delays the next roll.
+   * parallel from independent seeds; the first clean trajectory wins. Workers
+   * that already finished are REUSED (no per-roll spawn cost); only the ones
+   * still busy when the race ends are terminated and replaced.
    */
   async solve(target: [Die, Die], seed: number): Promise<SolveResult> {
     for (let round = 0; round < 3; round++) {
@@ -55,21 +56,25 @@ export class DiceSolver {
       const seeds = this.workers.map((_, i) =>
         i === 0 && round === 0 ? seed : secureSeed(),
       );
+      const settled = this.workers.map(() => false);
 
       const winner = await new Promise<SolveResult | null>((resolve) => {
         let failed = 0;
         this.workers.forEach((w, i) => {
           void solveInWorker(w, id, target, seeds[i]).then((r) => {
+            settled[i] = true;
             if (r) resolve(r);
             else if (++failed === this.workers.length) resolve(null);
           });
         });
       });
 
-      // Terminate everything still searching and refill the pool.
-      for (const w of this.workers) w.terminate();
-      this.workers = [];
-      for (let i = 0; i < POOL_SIZE; i++) this.workers.push(spawnWorker());
+      // Recycle finished workers; replace only the ones still crunching.
+      this.workers = this.workers.map((w, i) => {
+        if (settled[i]) return w;
+        w.terminate();
+        return spawnWorker();
+      });
 
       if (winner) return winner;
     }

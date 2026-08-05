@@ -30,6 +30,7 @@ export class LayoutPicker {
   private downValid = false;
   private exceededSlop = false;
   private suppressedAtDown = false;
+  private lastHoverAt = 0;
 
   constructor(
     private el: HTMLElement,
@@ -71,12 +72,17 @@ export class LayoutPicker {
       this.suppressedAtDown = this.suppressClicks();
     });
     el.addEventListener('pointermove', (e) => {
+      // Slop tracking sees EVERY move (gesture correctness)...
       if (
         e.pointerId === this.activePointer &&
         Math.hypot(e.clientX - this.downX, e.clientY - this.downY) > CLICK_SLOP_PX
       ) {
         this.exceededSlop = true; // latched: this gesture is a drag forever
       }
+      // ...but the raycast + DOM hover work is throttled to ~60Hz so
+      // high-report-rate mice can't flood the main thread.
+      if (e.timeStamp - this.lastHoverAt < 16) return;
+      this.lastHoverAt = e.timeStamp;
       const region = this.regionUnder(e);
       this.setHighlight(region);
       this.events.onHover(region, e.clientX, e.clientY);

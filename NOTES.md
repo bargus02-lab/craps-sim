@@ -234,6 +234,24 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 6 — lay-odds fix + performance (user-requested)
+
+- **Don't pass odds bug fixed**: $25 don't pass at point 4 previously allowed
+  a $300 lay (the code capped the potential WIN at 6× flat). The standard
+  3-4-5x rule caps the LAY AMOUNT at 6× the flat — $150 max on $25, winning
+  $75 on the 4 — mirroring the 3x/4x/5x take schedule. Applied to don't pass
+  and don't come odds; the exact reported scenario is now a regression test,
+  and flat-N× games keep the lay-to-win-N× convention (verified: 100x on the
+  4 allows laying 200x).
+- **Performance pass**: renderer pixel ratio capped at 1.5 (≈44% fewer
+  fragments on Retina vs the old 2.0 cap), `powerPreference:
+  'high-performance'`, depth of field now OFF by default (it was the most
+  expensive effect; a one-time migration turns it off for existing saves,
+  after which the settings toggle is respected), hover raycasts throttled to
+  60 Hz against high-report-rate mice, and solver workers are now reused
+  between rolls (only busy losers are terminated) instead of respawning all
+  three every throw.
+
 ## Round 5 — premium pass (user-requested)
 
 - **Pyramid-rubber walls**: the inner walls (including the far wall the dice

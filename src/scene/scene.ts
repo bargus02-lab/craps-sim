@@ -26,8 +26,14 @@ export interface CrapsScene {
 }
 
 export function createScene(container: HTMLElement): CrapsScene {
-  const renderer = new THREE.WebGLRenderer({ antialias: true });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+  // Pixel-ratio cap 1.5: on Retina/4K this cuts fragment work ~44% vs 2.0
+  // with barely visible sharpness loss — the single biggest perf lever here.
+  const PIXEL_RATIO_CAP = 1.5;
+  const renderer = new THREE.WebGLRenderer({
+    antialias: true,
+    powerPreference: 'high-performance',
+  });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio, PIXEL_RATIO_CAP));
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -96,7 +102,7 @@ export function createScene(container: HTMLElement): CrapsScene {
   let focusTarget = 1.3;
 
   window.addEventListener('resize', () => {
-    const ratio = Math.min(window.devicePixelRatio, 2); // may change across monitors/zoom
+    const ratio = Math.min(window.devicePixelRatio, PIXEL_RATIO_CAP); // may change across monitors/zoom
     renderer.setPixelRatio(ratio);
     renderer.setSize(container.clientWidth, container.clientHeight);
     composer.setPixelRatio(ratio);

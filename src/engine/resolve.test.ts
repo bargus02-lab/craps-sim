@@ -794,15 +794,41 @@ describe('placeBet validation and bankroll accounting', () => {
     expect(() => placeBet(mk(6), { kind: 'passOdds' }, 51)).toThrow(/max/i);
   });
 
-  it("caps don't pass lay odds by potential WIN (3-4-5x: win up to 6x flat)", () => {
-    const mk = () =>
+  it("caps don't pass lay odds at 6x the flat under 3-4-5x (the standard rule)", () => {
+    const mk = (pt: 4 | 6) =>
       state((x) => {
-        x.point = 4;
+        x.point = pt;
         x.bets.dontPass = 10;
       });
-    // Win cap = 60; laying 120 at 1:2 wins exactly 60.
-    expect(placeBet(mk(), { kind: 'dontPassOdds' }, 120).bets.dontPassOdds).toBe(120);
-    expect(() => placeBet(mk(), { kind: 'dontPassOdds' }, 121)).toThrow(/capped/i);
+    // Lay AMOUNT cap = 6x flat = 60 on every point (wins 30 on the 4).
+    expect(placeBet(mk(4), { kind: 'dontPassOdds' }, 60).bets.dontPassOdds).toBe(60);
+    expect(() => placeBet(mk(4), { kind: 'dontPassOdds' }, 61)).toThrow(/max lay/i);
+    expect(placeBet(mk(6), { kind: 'dontPassOdds' }, 60).bets.dontPassOdds).toBe(60);
+    expect(() => placeBet(mk(6), { kind: 'dontPassOdds' }, 61)).toThrow(/max lay/i);
+  });
+
+  it('the reported bug: $25 don\'t pass, point 4 — lay caps at $150, not $300', () => {
+    let s = createState({ bankroll: 1000 });
+    s = placeBet(s, { kind: 'dontPass' }, 25);
+    s.point = 4;
+    expect(() => placeBet(s, { kind: 'dontPassOdds' }, 300)).toThrow(/max lay/i);
+    s = placeBet(s, { kind: 'dontPassOdds' }, 150);
+    expect(s.bets.dontPassOdds).toBe(150);
+    expect(() => placeBet(s, { kind: 'dontPassOdds' }, 1)).toThrow(/max lay/i);
+  });
+
+  it("flat Nx games cap the don't side by potential WIN (100x: lay 200x on the 4)", () => {
+    const mk = () =>
+      state(
+        (x) => {
+          x.point = 4;
+          x.bets.dontPass = 10;
+        },
+        { oddsPolicy: { type: 'flat', multiple: 100 } },
+      );
+    // Win cap 1000 → lay up to 2000 at 1:2.
+    expect(placeBet(mk(), { kind: 'dontPassOdds' }, 2000).bets.dontPassOdds).toBe(2000);
+    expect(() => placeBet(mk(), { kind: 'dontPassOdds' }, 2001)).toThrow(/max lay/i);
   });
 
   it('supports a configurable flat odds multiple, including 100x', () => {

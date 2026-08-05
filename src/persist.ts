@@ -14,6 +14,8 @@ export interface Prefs {
   dof: boolean;
   /** Preferred betting view: overhead plan view or first-person rail. */
   view: 'overhead' | 'rail';
+  /** One-time marker: the perf pass turned DOF off by default for old saves. */
+  perfMigrated: boolean;
 }
 
 export interface BetRecord {
@@ -100,7 +102,9 @@ export function emptyStats(): StatsData {
 }
 
 export function defaultPrefs(): Prefs {
-  return { sound: true, dof: true, view: 'overhead' };
+  // Depth of field is pure eye candy and the most expensive thing on screen —
+  // off by default; the settings toggle brings it back.
+  return { sound: true, dof: false, view: 'overhead', perfMigrated: true };
 }
 
 const num = (v: unknown, fallback = 0) =>
@@ -254,8 +258,14 @@ export function loadSave(): SaveData | null {
       settings: normSettings(d.settings),
       prefs: {
         sound: typeof prefsRaw.sound === 'boolean' ? prefsRaw.sound : true,
-        dof: typeof prefsRaw.dof === 'boolean' ? prefsRaw.dof : true,
+        // Saves from before the perf pass get DOF switched off once; after
+        // that the user's own toggle choice sticks.
+        dof:
+          prefsRaw.perfMigrated === true && typeof prefsRaw.dof === 'boolean'
+            ? prefsRaw.dof
+            : false,
         view: prefsRaw.view === 'rail' ? 'rail' : 'overhead',
+        perfMigrated: true,
       },
       stats: normStats(d.stats),
       session: { wagered: num(sessionRaw.wagered), net: num(sessionRaw.net) },

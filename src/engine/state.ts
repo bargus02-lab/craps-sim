@@ -210,9 +210,21 @@ export function maxTakeOddsMultiple(policy: OddsPolicy, n: PointNumber): number 
   return n === 4 || n === 10 ? 3 : n === 5 || n === 9 ? 4 : 5;
 }
 
-/** Don't-side odds are capped by potential WIN, not by lay amount. */
-export function maxLayWinMultiple(policy: OddsPolicy): number {
-  return policy.type === 'flat' ? policy.multiple : 6;
+/**
+ * Maximum lay-odds AMOUNT behind a don't bet.
+ * - 3-4-5x: the don't side may lay up to 6x the flat bet on any point —
+ *   winning 3x/4x/5x the flat depending on the point, the exact mirror of the
+ *   take-odds schedule (the standard casino rule).
+ * - Flat Nx: the don't side may lay enough to WIN up to Nx the flat
+ *   (e.g. 100x on the 4 allows laying 200x to win 100x).
+ */
+export function maxLayAmount(
+  policy: OddsPolicy,
+  point: PointNumber,
+  flat: number,
+): number {
+  if (policy.type === '345') return 6 * flat;
+  return (policy.multiple * flat) / LAY_ODDS[point];
 }
 
 import { LAY_ODDS } from './payouts';
@@ -256,10 +268,9 @@ export function placeBet(
     case 'dontPassOdds': {
       if (s.point === null) throw new Error("Don't pass odds require an established point");
       if (bets.dontPass <= 0) throw new Error("Don't pass odds require a don't pass bet");
-      const maxWin = bets.dontPass * maxLayWinMultiple(policy);
-      const winAfter = (bets.dontPassOdds + amount) * LAY_ODDS[s.point];
-      if (winAfter > maxWin + EPS)
-        throw new Error(`Don't pass odds are capped at a potential win of ${maxWin}`);
+      const max = maxLayAmount(policy, s.point, bets.dontPass);
+      if (bets.dontPassOdds + amount > max + EPS)
+        throw new Error(`Max lay odds behind ${bets.dontPass} on the ${s.point} is ${max}`);
       bets.dontPassOdds += amount;
       break;
     }
@@ -284,10 +295,9 @@ export function placeBet(
       const dcp = bets.dontComePoints[target.number];
       if (!dcp || dcp.flat <= 0)
         throw new Error(`No don't come point established on ${target.number}`);
-      const maxWin = dcp.flat * maxLayWinMultiple(policy);
-      const winAfter = (dcp.odds + amount) * LAY_ODDS[target.number];
-      if (winAfter > maxWin + EPS)
-        throw new Error(`Don't come odds on ${target.number} are capped at a potential win of ${maxWin}`);
+      const max = maxLayAmount(policy, target.number, dcp.flat);
+      if (dcp.odds + amount > max + EPS)
+        throw new Error(`Max lay odds behind ${dcp.flat} on the ${target.number} is ${max}`);
       dcp.odds += amount;
       break;
     }
