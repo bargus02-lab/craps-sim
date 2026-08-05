@@ -13,20 +13,19 @@ import {
 } from '../engine/state';
 import { anchorForBetId } from './layout';
 
-export const CHIP_DENOMS = [100, 50, 25, 5, 1] as const;
+export const CHIP_DENOMS = [100, 25, 5, 1] as const;
 export type ChipDenom = (typeof CHIP_DENOMS)[number];
 
 export const CHIP_STYLE: Record<ChipDenom, { base: string; accent: string; text: string }> = {
   1: { base: '#e9e4d7', accent: '#a7a08f', text: '#39352b' },
   5: { base: '#b03028', accent: '#f2ecdd', text: '#f2ecdd' },
   25: { base: '#1d7a44', accent: '#f2ecdd', text: '#f2ecdd' },
-  50: { base: '#d3831c', accent: '#f2ecdd', text: '#2c2010' },
   100: { base: '#1d1d21', accent: '#f2ecdd', text: '#f2ecdd' },
 };
 
-// Slightly over real size (39 mm) so stacks stay readable from the plan view.
-export const CHIP_RADIUS = 0.0225;
-export const CHIP_HEIGHT = 0.0042;
+// Well over real size so stacks and denominations stay readable from above.
+export const CHIP_RADIUS = 0.027;
+export const CHIP_HEIGHT = 0.005;
 const MAX_PER_DENOM = 256;
 const MAX_STACK = 14; // taller piles split into adjacent columns
 
@@ -117,7 +116,9 @@ function jitter(seed: number): { dx: number; dz: number; rot: number } {
   return {
     dx: (a - 0.5) * 0.003,
     dz: (b - 0.5) * 0.003,
-    rot: a * Math.PI * 2,
+    // Denomination stays upright toward the player: only a slight wobble
+    // around the orientation that faces the +z point of view.
+    rot: Math.PI / 2 + (a - 0.5) * 0.24,
   };
 }
 
@@ -171,6 +172,16 @@ function* iterBets(bets: Bets): Generator<{ id: string; amount: number }> {
   }
 }
 
+/** One live bet stack, for the floating total labels. */
+export interface StackLabel {
+  id: string;
+  amount: number;
+  x: number;
+  z: number;
+  /** World-space height of the tallest column's top chip. */
+  topY: number;
+}
+
 export class ChipRenderer {
   readonly group = new THREE.Group();
   private meshes = new Map<ChipDenom, THREE.InstancedMesh>();
@@ -179,6 +190,12 @@ export class ChipRenderer {
   private pos = new THREE.Vector3();
   private scl = new THREE.Vector3(1, 1, 1);
   private axisY = new THREE.Vector3(0, 1, 0);
+  private _labels: StackLabel[] = [];
+
+  /** Per-stack totals from the last update() call. */
+  get labels(): readonly StackLabel[] {
+    return this._labels;
+  }
 
   constructor() {
     const geo = chipGeometry();
@@ -201,10 +218,20 @@ export class ChipRenderer {
   update(bets: Bets) {
     const counts = new Map<ChipDenom, number>();
     for (const d of CHIP_DENOMS) counts.set(d, 0);
+    this._labels = [];
 
     for (const { id, amount } of iterBets(bets)) {
       const anchor = anchorForBetId(id);
-      const chips = chipsFor(amount);
+      // Smallest denominations at the BOTTOM of the stack — a red $5 added to
+      // a green $25 slides underneath it.
+      const chips = chipsFor(amount).reverse();
+      this._labels.push({
+        id,
+        amount,
+        x: anchor.x,
+        z: anchor.z,
+        topY: 0.001 + Math.min(chips.length, MAX_STACK) * (CHIP_HEIGHT * 1.04),
+      });
       const baseSeed = hash(id);
       let slot = 0; // advances only for chips actually rendered — no floating gaps
       for (let i = 0; i < chips.length; i++) {

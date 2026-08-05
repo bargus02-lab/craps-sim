@@ -53,6 +53,7 @@ export class Puck {
     this.mesh = new THREE.Mesh(geo, [side, on, off]);
     this.mesh.castShadow = true;
     this.mesh.position.copy(this.targetPos);
+    this.mesh.rotation.y = Math.PI / 2; // ON/OFF lettering upright toward the player
     this.mesh.rotation.z = this.targetFlip;
   }
 

@@ -234,6 +234,25 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 3 refinements (user-requested)
+
+- **Auto zoom-back**: the settle close-up holds ~2.4 s and then returns to the
+  betting view on its own; any interaction dismisses it sooner.
+- **Bigger pieces**: dice 30 mm, chips 54 mm — sized for the plan view.
+- **$50 chip removed**: denominations are now 1 / 5 / 25 / 100.
+- **Payout column**: the on-table tags were replaced by a vertical "IF IT
+  ROLLS" column on the right edge — every total 2–12 with the NET result of
+  the next roll, computed by running the actual engine resolve() against the
+  live state (so it honestly reflects come-out rules, working toggles, odds,
+  everything). Hard totals show a separate value when a hardway bet makes the
+  hard/easy outcome differ. Sevens circled red, Evolution-style.
+- **Stacks**: chips re-sort smallest-at-bottom (a red $5 added to a green $25
+  slides underneath), and every stack carries a floating total label above it
+  ("$30"). Labels hide while the dice roll.
+- **Upright numbers**: chip denominations and the puck lettering now keep a
+  fixed orientation facing the player (only a slight wobble), so every number
+  on the table reads upright from the point of view.
+
 ## Main-view refinements (user-requested)
 
 - The mirrored second end was removed again — single-end table only — and the

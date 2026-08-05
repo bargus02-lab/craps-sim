@@ -20,8 +20,8 @@ export const TABLE = {
 } as const;
 
 export const DICE = {
-  /** Half-extent of a die — 25 mm, slightly over casino size for readability. */
-  half: 0.0125,
+  /** Half-extent of a die — 30 mm, oversized for readability from the plan view. */
+  half: 0.015,
   mass: 0.02,
 } as const;
 

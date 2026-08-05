@@ -155,7 +155,7 @@ export class Hud {
     for (const d of CHIP_DENOMS.slice().reverse()) {
       const style = CHIP_STYLE[d];
       const btn = document.createElement('button');
-      btn.className = `chip ${d === 1 || d === 50 ? 'light' : 'dark'}`;
+      btn.className = `chip ${d === 1 ? 'light' : 'dark'}`;
       btn.style.background = style.base;
       btn.style.color = style.text;
       btn.textContent = `${d}`;

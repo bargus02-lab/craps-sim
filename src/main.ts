@@ -14,20 +14,15 @@ import {
   totalOnTable,
   updateSettings,
   POINT_NUMBERS,
+  HARDWAY_NUMBERS,
   type BetTarget,
 } from './engine/state';
-import { PLACE_PAY, TAKE_ODDS, buyWinnings } from './engine/payouts';
 import { resolve as resolveRoll, type Resolution, type RollEvent } from './engine/resolve';
 import { ChipRenderer, type ChipDenom } from './scene/chips';
 import { LayoutPicker } from './scene/picking';
 import { Hud, fmt, type BreakdownEntry } from './ui/hud';
 import { Panels } from './ui/panels';
-import {
-  LAYOUT_REGIONS,
-  oddsRegionsFor,
-  numberBoxRect,
-  type LayoutRegion,
-} from './scene/layout';
+import { LAYOUT_REGIONS, oddsRegionsFor, type LayoutRegion } from './scene/layout';
 import { Puck } from './scene/puck';
 import { RegionFlash } from './scene/flash';
 import { SoundEngine } from './audio/sound';
@@ -43,16 +38,39 @@ import {
 
 document.body.innerHTML = `
   <div id="stage"></div>
-  <div id="payoutTags"></div>
+  <div id="stackTags"></div>
+  <div id="payoutCol"></div>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0c10; }
     #stage { position: fixed; inset: 0; }
     #stage canvas { display: block; touch-action: none; }
-    #payoutTags { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
-    .ptag { position: fixed; transform: translate(-50%, -50%); white-space: nowrap;
-            padding: 2px 9px; border-radius: 999px; font: 700 11.5px 'Avenir Next', sans-serif;
-            letter-spacing: 0.04em; color: #1d1a10; background: rgba(232, 196, 118, 0.94);
-            border: 1px solid #8a6c2f; box-shadow: 0 2px 6px rgba(0,0,0,0.55); }
+    #stackTags { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
+    .stag { position: fixed; transform: translate(-50%, -100%); white-space: nowrap;
+            padding: 1px 7px; border-radius: 999px; font: 700 11px 'Avenir Next', sans-serif;
+            letter-spacing: 0.03em; color: #f2ecdd; background: rgba(14, 18, 15, 0.85);
+            border: 1px solid rgba(232, 196, 118, 0.65); box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
+    #payoutCol { position: fixed; right: 12px; top: 50%; transform: translateY(-50%);
+                 display: none; flex-direction: column; gap: 3px; z-index: 5;
+                 pointer-events: none; font-family: 'Avenir Next', 'Segoe UI', sans-serif; }
+    #payoutCol .pc-head { text-align: center; font-size: 9px; letter-spacing: 0.16em;
+                          color: #c8a45a; margin-bottom: 3px; }
+    #payoutCol .pc-row { display: flex; align-items: center; gap: 7px;
+                         background: rgba(10, 14, 12, 0.82); border: 1px solid #2c3a32;
+                         border-radius: 999px; padding: 2px 9px 2px 3px; }
+    #payoutCol .pc-num { width: 24px; height: 24px; border-radius: 50%; display: flex;
+                         align-items: center; justify-content: center;
+                         background: rgba(240, 236, 224, 0.9); color: #23241f;
+                         font-size: 12px; font-weight: 700; }
+    #payoutCol .pc-row.seven .pc-num { background: #b8352c; color: #f5f0df; }
+    #payoutCol .pc-val { font-size: 11.5px; font-weight: 700; min-width: 52px; text-align: right; }
+    #payoutCol .pos { color: #7fe09a; }
+    #payoutCol .neg { color: #f08a7a; }
+    #payoutCol .zero { color: #5d6a60; }
+    #payoutCol .pc-hard { font-size: 9.5px; color: #c8b06a; margin-left: 4px; }
+    @media (max-width: 900px) {
+      #payoutCol { right: 6px; }
+      #payoutCol .pc-val { min-width: 44px; font-size: 10.5px; }
+    }
   </style>`;
 
 const stage = document.getElementById('stage')!;
@@ -137,8 +155,21 @@ function applyView() {
 }
 applyView();
 
+// After the settle close-up, zoom back to the betting view on its own — no
+// click needed. Any interaction dismisses sooner.
+let autoReturn: ReturnType<typeof setTimeout> | null = null;
+function cancelAutoReturn() {
+  if (autoReturn) {
+    clearTimeout(autoReturn);
+    autoReturn = null;
+  }
+}
+
 // Dismissing the dice close-up returns to the preferred betting view.
-view.cameraRig.onUserDismiss = () => applyView();
+view.cameraRig.onUserDismiss = () => {
+  cancelAutoReturn();
+  applyView();
+};
 
 const panels = new Panels(
   document.body,
@@ -218,36 +249,25 @@ function amountFor(t: BetTarget): number {
   }
 }
 
-// ---- floating "pays $X" tags over number columns with live bets ------------
-const tagsEl = document.getElementById('payoutTags')!;
-interface PayoutTag {
+// ---- floating stack-total labels over every live bet -----------------------
+const stackTagsEl = document.getElementById('stackTags')!;
+interface StackTag {
   el: HTMLElement;
   x: number;
+  y: number;
   z: number;
 }
-let payoutTags: PayoutTag[] = [];
+let stackTags: StackTag[] = [];
 
-function rebuildPayoutTags() {
-  tagsEl.innerHTML = '';
-  payoutTags = [];
-  for (const n of POINT_NUMBERS) {
-    // What lands in your stack if this number rolls right now.
-    let win = 0;
-    const p = state.bets.place[n];
-    if (p) win += p * PLACE_PAY[n];
-    if (n === 4 || n === 10) {
-      const bought = state.bets.buy[n];
-      if (bought) win += buyWinnings(bought);
-    }
-    const cp = state.bets.comePoints[n];
-    if (cp) win += cp.flat + cp.odds * TAKE_ODDS[n];
-    if (win <= 0) continue;
+function rebuildStackTags() {
+  stackTagsEl.innerHTML = '';
+  stackTags = [];
+  for (const s of chips.labels) {
     const el = document.createElement('span');
-    el.className = 'ptag';
-    el.textContent = `${n} pays ${fmt(win)}`;
-    tagsEl.appendChild(el);
-    const box = numberBoxRect(n);
-    payoutTags.push({ el, x: (box.x0 + box.x1) / 2, z: -0.402 });
+    el.className = 'stag';
+    el.textContent = fmt(s.amount);
+    stackTagsEl.appendChild(el);
+    stackTags.push({ el, x: s.x, y: s.topY + 0.006, z: s.z });
   }
 }
 
@@ -259,12 +279,12 @@ view.onFrame(() => {
     preRoll !== null ||
     view.cameraRig.isFocusEngaged ||
     view.cameraRig.isAnimating;
-  tagsEl.style.display = hide ? 'none' : 'block';
+  stackTagsEl.style.display = hide ? 'none' : 'block';
   if (hide) return;
   const el = view.renderer.domElement;
   const r = el.getBoundingClientRect();
-  for (const t of payoutTags) {
-    tagVec.set(t.x, 0.002, t.z).project(view.cameraRig.camera);
+  for (const t of stackTags) {
+    tagVec.set(t.x, t.y, t.z).project(view.cameraRig.camera);
     if (tagVec.z > 1 || Math.abs(tagVec.x) > 1.05 || Math.abs(tagVec.y) > 1.05) {
       t.el.style.display = 'none';
       continue;
@@ -275,9 +295,65 @@ view.onFrame(() => {
   }
 });
 
+// ---- right-side payout column: net result for every possible next total ----
+const payoutColEl = document.getElementById('payoutCol')!;
+const EASY_COMBO: Record<number, [1 | 2 | 3 | 4 | 5 | 6, 1 | 2 | 3 | 4 | 5 | 6]> = {
+  2: [1, 1],
+  3: [1, 2],
+  4: [1, 3],
+  5: [2, 3],
+  6: [2, 4],
+  7: [3, 4],
+  8: [3, 5],
+  9: [4, 5],
+  10: [4, 6],
+  11: [5, 6],
+  12: [6, 6],
+};
+
+function netForRoll(a: 1 | 2 | 3 | 4 | 5 | 6, b: 1 | 2 | 3 | 4 | 5 | 6): number {
+  const out = resolveRoll(state, a, b);
+  let net = 0;
+  for (const res of out.resolutions) {
+    if (res.outcome === 'win') net += res.winnings;
+    else if (res.outcome === 'lose') net -= res.stake;
+  }
+  return net;
+}
+
+function updatePayoutColumn() {
+  if (totalOnTable(state.bets) <= 0) {
+    payoutColEl.style.display = 'none';
+    return;
+  }
+  payoutColEl.style.display = 'flex';
+  const rows: string[] = [`<div class="pc-head">IF IT ROLLS</div>`];
+  for (let t = 2; t <= 12; t++) {
+    const [a, b] = EASY_COMBO[t];
+    const net = netForRoll(a, b);
+    // Totals 4/6/8/10 land soft or hard — show the hard variant when it differs.
+    let hard = '';
+    if ((HARDWAY_NUMBERS as readonly number[]).includes(t)) {
+      const h = (t / 2) as 1 | 2 | 3 | 4 | 5 | 6;
+      const hardNet = netForRoll(h, h);
+      if (hardNet !== net) {
+        hard = `<span class="pc-hard">hard ${hardNet >= 0 ? '+' : '−'}${fmt(Math.abs(hardNet))}</span>`;
+      }
+    }
+    const cls = net > 0 ? 'pos' : net < 0 ? 'neg' : 'zero';
+    const txt = net > 0 ? `+${fmt(net)}` : net < 0 ? `−${fmt(-net)}` : '—';
+    rows.push(
+      `<div class="pc-row${t === 7 ? ' seven' : ''}"><span class="pc-num">${t}</span>` +
+        `<span class="pc-val ${cls}">${txt}</span>${hard}</div>`,
+    );
+  }
+  payoutColEl.innerHTML = rows.join('');
+}
+
 function refresh() {
   chips.update(state.bets);
-  rebuildPayoutTags();
+  rebuildStackTags();
+  updatePayoutColumn();
   hud.setBankroll(state.bankroll, totalOnTable(state.bets));
   hud.setSession(
     `session · wagered ${fmt(session.wagered)} · net ${session.net >= 0 ? '+' : '−'}${fmt(Math.abs(session.net))}`,
@@ -613,10 +689,19 @@ function finishRoll(r: SolveResult) {
   const eye = new THREE.Vector3(mid.x + d * 0.4, Math.max(0.28, d * 0.7), mid.z + d * 0.65);
   view.cameraRig.pushTo(eye, mid);
   view.setFocusDistance(eye.distanceTo(mid));
+
+  // Hold the close-up long enough to read the dice, then return by itself.
+  cancelAutoReturn();
+  autoReturn = setTimeout(() => {
+    autoReturn = null;
+    view.cameraRig.release();
+    applyView();
+  }, 2400);
 }
 
 async function doRoll() {
   if (rolling || playback || preRoll) return;
+  cancelAutoReturn();
   rolling = true;
   hud.setRollEnabled(false);
   hud.setResult('');
