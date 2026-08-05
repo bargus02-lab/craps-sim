@@ -26,7 +26,8 @@ export class LayoutPicker {
   private activePointer: number | null = null;
   private downX = 0;
   private downY = 0;
-  private downButton = -1;
+  private downRemove = false; // right button, ctrl+click, or cmd+click
+  private downValid = false;
   private exceededSlop = false;
   private suppressedAtDown = false;
 
@@ -59,7 +60,10 @@ export class LayoutPicker {
       this.activePointer = e.pointerId;
       this.downX = e.clientX;
       this.downY = e.clientY;
-      this.downButton = e.button;
+      // Removal gestures: ctrl+click (cmd+click on Mac) or right-click. On
+      // macOS, ctrl+click already arrives as button 2 — covered either way.
+      this.downRemove = e.button === 2 || e.ctrlKey || e.metaKey;
+      this.downValid = e.button === 0 || e.button === 2;
       this.exceededSlop = false;
       // LATCHED at gesture start: a press that begins while the camera is off
       // the rail (or dice are rolling) can never become a bet, no matter how
@@ -79,21 +83,22 @@ export class LayoutPicker {
     });
     el.addEventListener('pointerup', (e) => {
       if (e.pointerId !== this.activePointer) return;
-      const button = this.downButton;
+      const remove = this.downRemove;
+      const valid = this.downValid;
       const wasDrag = this.exceededSlop;
       const suppressed = this.suppressedAtDown;
       this.activePointer = null;
-      this.downButton = -1;
-      if (wasDrag || suppressed || this.suppressClicks()) return;
+      this.downValid = false;
+      if (!valid || wasDrag || suppressed || this.suppressClicks()) return;
       const region = this.regionUnder(e);
       if (!region) return;
-      if (button === 2) this.events.onRemove(region);
-      else if (button === 0) this.events.onBet(region);
+      if (remove) this.events.onRemove(region);
+      else this.events.onBet(region);
     });
     el.addEventListener('pointercancel', (e) => {
       if (e.pointerId === this.activePointer) {
         this.activePointer = null;
-        this.downButton = -1;
+        this.downValid = false;
       }
     });
     el.addEventListener('pointerleave', () => {

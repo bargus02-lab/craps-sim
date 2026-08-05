@@ -1,8 +1,15 @@
-// First-person rail camera: fixed eye position at the rail, drag to look
-// around within a limited arc, plus a smooth push-in toward the settled dice.
+// Camera rig with two betting views and a dice close-up:
+// - 'overhead': directly above the table, whole layout visible — the default
+//   betting view.
+// - 'rail': first-person at the rail with a limited drag-look arc — the view
+//   the throw is watched from.
+// - focus: temporary push-in on the settled dice, dismissed by interaction.
+// All transitions are smoothly blended.
 
 import * as THREE from 'three';
-import { CAMERA, CLICK_SLOP_PX } from './constants';
+import { CAMERA, CLICK_SLOP_PX, TABLE } from './constants';
+
+export type ViewMode = 'rail' | 'overhead';
 
 /** Vertical FOV that keeps a constant horizontal FOV across aspect ratios. */
 function verticalFov(aspect: number): number {
@@ -14,8 +21,11 @@ const EASE = (t: number) => t * t * (3 - 2 * t); // smoothstep
 
 export class RailCamera {
   readonly camera: THREE.PerspectiveCamera;
-  private basePos: THREE.Vector3;
-  private baseQuat = new THREE.Quaternion();
+  /** Called when the player dismisses the dice close-up with a press. */
+  onUserDismiss: (() => void) | null = null;
+
+  // Rail pose + drag-look state.
+  private railPos: THREE.Vector3;
   private baseYaw: number;
   private basePitch: number;
   private yawOffset = 0;
@@ -27,34 +37,83 @@ export class RailCamera {
   private downY = 0;
   private engaged = false; // only rotate once the pointer has moved past the click slop
 
-  // Push-in animation state.
+  // Overhead pose (recomputed per aspect so the whole felt always fits).
+  private overheadPos = new THREE.Vector3();
+  private overheadQuat = new THREE.Quaternion();
+
+  // View-mode blend: 0 = rail, 1 = overhead.
+  private viewMode: ViewMode;
+  private modeBlend: number;
+  private modeTarget: number;
+
+  // Dice close-up (focus) blend: 0 = base view, 1 = at the dice.
   private focusPos: THREE.Vector3 | null = null;
   private focusQuat = new THREE.Quaternion();
-  private blend = 0; // 0 = at rail, 1 = at focus
+  private blend = 0;
   private blendTarget = 0;
 
-  private fromPos = new THREE.Vector3();
-  private fromQuat = new THREE.Quaternion();
   private railQuat = new THREE.Quaternion();
+  private basePosTmp = new THREE.Vector3();
+  private baseQuatTmp = new THREE.Quaternion();
+  private outPos = new THREE.Vector3();
+  private outQuat = new THREE.Quaternion();
 
-  constructor(aspect: number) {
+  constructor(aspect: number, initialMode: ViewMode = 'overhead') {
     this.camera = new THREE.PerspectiveCamera(verticalFov(aspect), aspect, 0.01, 30);
     const p = CAMERA.position;
-    this.basePos = new THREE.Vector3(p.x, p.y, p.z);
-    this.camera.position.copy(this.basePos);
+    this.railPos = new THREE.Vector3(p.x, p.y, p.z);
+    this.camera.position.copy(this.railPos);
     const t = CAMERA.target;
     this.camera.lookAt(t.x, t.y, t.z);
-    this.baseQuat.copy(this.camera.quaternion);
     const e = new THREE.Euler().setFromQuaternion(this.camera.quaternion, 'YXZ');
     this.baseYaw = e.y;
     this.basePitch = e.x;
+
+    this.computeOverhead(aspect);
+    this.viewMode = initialMode;
+    this.modeBlend = this.modeTarget = initialMode === 'overhead' ? 1 : 0;
+    this.update(0);
+  }
+
+  private computeOverhead(aspect: number) {
+    const hfov = THREE.MathUtils.degToRad(CAMERA.horizontalFov);
+    const vfov = THREE.MathUtils.degToRad(verticalFov(aspect));
+    // Half extents of the printed felt plus a small margin.
+    const hx = TABLE.feltHalfX + TABLE.wallThickness + 0.1;
+    const hz = TABLE.feltHalfZ + TABLE.wallThickness + 0.1;
+    const height = Math.max(hx / Math.tan(hfov / 2), hz / Math.tan(vfov / 2)) + 0.06;
+    this.overheadPos.set(0, height, 0.0001);
+    // Straight down, far side of the table at the top of the screen.
+    const m = new THREE.Matrix4().lookAt(
+      this.overheadPos,
+      new THREE.Vector3(0, 0, 0),
+      new THREE.Vector3(0, 0, -1),
+    );
+    this.overheadQuat.setFromRotationMatrix(m);
+  }
+
+  get mode(): ViewMode {
+    return this.viewMode;
+  }
+
+  /** Camera-to-table distance of the overhead view (for depth-of-field focus). */
+  get overheadHeight(): number {
+    return this.overheadPos.y;
+  }
+
+  setMode(mode: ViewMode) {
+    this.viewMode = mode;
+    this.modeTarget = mode === 'overhead' ? 1 : 0;
   }
 
   attach(el: HTMLElement) {
     el.addEventListener('pointerdown', (ev) => {
-      // Any interaction while pushed in on the dice returns to the rail view
+      // Any interaction while pushed in on the dice returns to the base view
       // (the click itself is suppressed while the camera animates back).
-      if (this.blendTarget === 1) this.release();
+      if (this.blendTarget === 1) {
+        this.release();
+        this.onUserDismiss?.();
+      }
       if (this.activePointer !== null || ev.button !== 0) return; // one finger, left button
       this.activePointer = ev.pointerId;
       this.lastX = this.downX = ev.clientX;
@@ -64,6 +123,7 @@ export class RailCamera {
     });
     el.addEventListener('pointermove', (ev) => {
       if (ev.pointerId !== this.activePointer) return;
+      if (this.viewMode !== 'rail') return; // drag-look only exists at the rail
       if (!this.engaged) {
         // A click (small movement) places a bet; only real drags steer the view.
         if (Math.hypot(ev.clientX - this.downX, ev.clientY - this.downY) <= CLICK_SLOP_PX) return;
@@ -105,18 +165,18 @@ export class RailCamera {
     this.blendTarget = 1;
   }
 
-  /** Ease back to the rail view. */
+  /** Ease back to the base (rail/overhead) view. */
   release() {
     this.blendTarget = 0;
   }
 
-  /** True while the push-in/release blend is animating (clicks are unreliable then). */
+  /** True while any camera transition is animating (clicks are unreliable then). */
   get isAnimating(): boolean {
-    return this.blend !== this.blendTarget;
+    return this.blend !== this.blendTarget || this.modeBlend !== this.modeTarget;
   }
 
-  /** True whenever the camera is not at (or settled on) the rail view. */
-  get isOffRail(): boolean {
+  /** True whenever the dice close-up is engaged or returning. */
+  get isFocusEngaged(): boolean {
     return this.blend > 0 || this.blendTarget === 1;
   }
 
@@ -126,22 +186,33 @@ export class RailCamera {
       new THREE.Euler(this.basePitch + this.pitchOffset, this.baseYaw + this.yawOffset, 0, 'YXZ'),
     );
 
-    const speed = 1.6; // blend units per second
+    // View-mode blend (rail <-> overhead).
+    const modeSpeed = 1.8;
+    if (this.modeBlend !== this.modeTarget) {
+      const dir = Math.sign(this.modeTarget - this.modeBlend);
+      this.modeBlend = THREE.MathUtils.clamp(this.modeBlend + dir * modeSpeed * delta, 0, 1);
+    }
+    const mk = EASE(this.modeBlend);
+    this.basePosTmp.lerpVectors(this.railPos, this.overheadPos, mk);
+    this.baseQuatTmp.slerpQuaternions(this.railQuat, this.overheadQuat, mk);
+
+    // Focus blend (base <-> dice close-up).
+    const focusSpeed = 1.6;
     if (this.blend !== this.blendTarget) {
       const dir = Math.sign(this.blendTarget - this.blend);
-      this.blend = THREE.MathUtils.clamp(this.blend + dir * speed * delta, 0, 1);
+      this.blend = THREE.MathUtils.clamp(this.blend + dir * focusSpeed * delta, 0, 1);
     }
 
     if (this.focusPos && this.blend > 0) {
       const k = EASE(this.blend);
-      this.fromPos.lerpVectors(this.basePos, this.focusPos, k);
-      this.fromQuat.slerpQuaternions(this.railQuat, this.focusQuat, k);
-      this.camera.position.copy(this.fromPos);
-      this.camera.quaternion.copy(this.fromQuat);
-      if (this.blend === 0) this.focusPos = null;
+      this.outPos.lerpVectors(this.basePosTmp, this.focusPos, k);
+      this.outQuat.slerpQuaternions(this.baseQuatTmp, this.focusQuat, k);
+      this.camera.position.copy(this.outPos);
+      this.camera.quaternion.copy(this.outQuat);
     } else {
-      this.camera.position.copy(this.basePos);
-      this.camera.quaternion.copy(this.railQuat);
+      if (this.blend === 0) this.focusPos = null;
+      this.camera.position.copy(this.basePosTmp);
+      this.camera.quaternion.copy(this.baseQuatTmp);
     }
   }
 
@@ -149,5 +220,6 @@ export class RailCamera {
     this.camera.aspect = aspect;
     this.camera.fov = verticalFov(aspect);
     this.camera.updateProjectionMatrix();
+    this.computeOverhead(aspect);
   }
 }

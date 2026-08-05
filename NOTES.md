@@ -212,6 +212,28 @@ stats panel with handle/net/realized edge and per-bet records; 3-4-5x default
 odds with a 100x option; localStorage persistence of bankroll/settings/stats;
 instanced chips; 121 fps measured with depth of field enabled.
 
+## Post-release polish (user-requested)
+
+- **Overhead betting view**: the default view is now directly above the table
+  with the whole layout visible (height auto-fits the felt at any aspect
+  ratio). Pressing ROLL flies down to the first-person rail for the throw and
+  the settle close-up; dismissing the close-up returns to your preferred
+  view. A RAIL VIEW / TOP VIEW button switches anytime and the preference
+  persists. Drag-look only exists at the rail (nothing to aim overhead).
+- **Ctrl+click removes chips** (cmd+click on Mac; macOS ctrl+click arrives as
+  a right-click and was already handled). Right-click and the REMOVE toggle
+  still work.
+- **Vegas-style layout restyle**: pass line now wraps the end of the lanes
+  with a rounded corner and a vertical PASS LINE segment (extra clickable
+  alias region), double-line box borders throughout, condensed stretched
+  lettering, gold-circled field 2/12 with DOUBLE/TRIPLE, diamond dividers and
+  apron diamonds, red prop lettering with "PAYS X TO 1" phrasing, and C & E
+  circles. Same regions/art single source of truth; all payouts unchanged.
+- **Toolchain note**: late in development, macOS folder protection began
+  intermittently blocking spawned node/git processes inside ~/Documents
+  (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
+  synced from the canonical files in the project directory.
+
 ## Rule decisions
 
 1. **Buy 4/10 commission** — spec says "2:1 less 5% commission" without timing.

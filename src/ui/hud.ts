@@ -7,6 +7,7 @@ export interface HudCallbacks {
   onSelectDenom(d: ChipDenom): void;
   onToggleRemove(active: boolean): void;
   onToggleKeep(active: boolean): void;
+  onToggleView(): void;
   onRoll(): void;
 }
 
@@ -46,7 +47,8 @@ export class Hud {
         <div id="rail">
           <div id="chips"></div>
           <button id="keepBtn" class="active" title="Winning bets stay working; contract bets re-place automatically">KEEP WINNINGS</button>
-          <button id="removeBtn" title="Remove mode — click a bet to take chips down">REMOVE</button>
+          <button id="removeBtn" title="Remove mode — or ctrl+click / right-click a bet to take chips down">REMOVE</button>
+          <button id="viewBtn" title="Switch between the overhead betting view and the first-person rail view"></button>
           <button id="roll">ROLL</button>
         </div>
         <div id="fair"></div>
@@ -69,7 +71,8 @@ export class Hud {
                    border: 1px solid #3d4a42; border-radius: 6px; font-size: 12px;
                    letter-spacing: 0.05em; display: none; z-index: 5; white-space: nowrap; }
         #rail { position: absolute; left: 50%; bottom: 2.2vh; transform: translateX(-50%);
-                display: flex; align-items: center; gap: 14px; pointer-events: auto; }
+                display: flex; align-items: center; gap: 14px; pointer-events: auto;
+                flex-wrap: wrap; justify-content: center; max-width: 96vw; }
         #chips { display: flex; gap: 10px; align-items: center; }
         .chip { width: 58px; height: 58px; border-radius: 50%; cursor: pointer; position: relative;
                 border: none; font: 700 1.05rem 'Avenir Next', sans-serif;
@@ -91,6 +94,10 @@ export class Hud {
                    letter-spacing: 0.12em; color: #9fc4a8; background: rgba(14, 40, 24, 0.75);
                    border: 1px solid #2e5c3c; border-radius: 999px; cursor: pointer; }
         #keepBtn.active { background: #1e6b3c; color: #e2f5e6; box-shadow: 0 0 0 3px rgba(90, 200, 130, 0.35); }
+        #viewBtn { pointer-events: auto; padding: 0.55em 1.1em; font-size: 0.78rem;
+                   letter-spacing: 0.12em; color: #b8c8d8; background: rgba(18, 28, 40, 0.75);
+                   border: 1px solid #3a4e64; border-radius: 999px; cursor: pointer; }
+        #viewBtn:hover { background: rgba(30, 46, 64, 0.9); }
         #rollnet { position: absolute; top: calc(4vh + 2.6rem); width: 100%; text-align: center;
                    font-size: 1.55rem; font-weight: 700; letter-spacing: 0.08em;
                    text-shadow: 0 2px 10px #000; min-height: 1.8rem; }
@@ -109,6 +116,13 @@ export class Hud {
         #breakdown .info { color: #8fb2c8; }
         #session { position: absolute; right: 1rem; top: 2.4rem; text-align: right;
                    font: 11px ui-monospace, monospace; color: #8a9aa8; }
+        @media (max-width: 900px) {
+          #result { font-size: 1.3rem; top: 8.5rem; }
+          #rollnet { font-size: 1.1rem; top: 10.2rem; }
+          #breakdown { top: 12rem; }
+          #fair { max-width: 60vw; }
+          #session { top: 4.6rem; }
+        }
         #roll { pointer-events: auto; padding: 0.8em 2.6em; font-size: 1rem; letter-spacing: 0.25em;
                 color: #f3e9d5; background: #7a1520; border: 1px solid #c8a45a;
                 border-radius: 999px; cursor: pointer; }
@@ -160,7 +174,15 @@ export class Hud {
       cb.onToggleKeep(active);
     });
 
+    document.getElementById('viewBtn')!.addEventListener('click', () => cb.onToggleView());
+
     this.rollBtn.addEventListener('click', () => cb.onRoll());
+  }
+
+  /** The button advertises the view you'd switch TO. */
+  setViewLabel(currentMode: 'rail' | 'overhead') {
+    document.getElementById('viewBtn')!.textContent =
+      currentMode === 'overhead' ? 'RAIL VIEW' : 'TOP VIEW';
   }
 
   /** Headline (net for the roll) + per-bet breakdown lines. */

@@ -7,6 +7,8 @@ import { defaultSettings, type Settings, type OddsPolicy } from './engine/state'
 export interface Prefs {
   sound: boolean;
   dof: boolean;
+  /** Preferred betting view: overhead plan view or first-person rail. */
+  view: 'overhead' | 'rail';
 }
 
 export interface BetRecord {
@@ -57,7 +59,7 @@ export function emptyStats(): StatsData {
 }
 
 export function defaultPrefs(): Prefs {
-  return { sound: true, dof: true };
+  return { sound: true, dof: true, view: 'overhead' };
 }
 
 const num = (v: unknown, fallback = 0) =>
@@ -153,6 +155,7 @@ export function loadSave(): SaveData | null {
       prefs: {
         sound: typeof prefsRaw.sound === 'boolean' ? prefsRaw.sound : true,
         dof: typeof prefsRaw.dof === 'boolean' ? prefsRaw.dof : true,
+        view: prefsRaw.view === 'rail' ? 'rail' : 'overhead',
       },
       stats: normStats(d.stats),
       session: { wagered: num(sessionRaw.wagered), net: num(sessionRaw.net) },

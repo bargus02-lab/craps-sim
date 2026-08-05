@@ -80,31 +80,31 @@ function buildRegions(): LayoutRegion[] {
     {
       id: 'field',
       target: { kind: 'field' },
-      rect: { x0: -1.26, z0: -0.385, x1: 0.1, z1: -0.245 },
+      rect: { x0: -1.08, z0: -0.385, x1: 0.1, z1: -0.245 },
       label: 'Field',
     },
     {
       id: 'come',
       target: { kind: 'come' },
-      rect: { x0: -1.26, z0: -0.23, x1: 0.1, z1: -0.075 },
+      rect: { x0: -1.08, z0: -0.23, x1: 0.1, z1: -0.075 },
       label: 'Come',
     },
     {
       id: 'big6',
       target: { kind: 'big6' },
-      rect: { x0: -1.26, z0: -0.045, x1: -1.06, z1: 0.015 },
+      rect: { x0: -1.06, z0: -0.045, x1: -0.9, z1: 0.015 },
       label: 'Big 6',
     },
     {
       id: 'big8',
       target: { kind: 'big8' },
-      rect: { x0: -1.26, z0: 0.015, x1: -1.06, z1: 0.075 },
+      rect: { x0: -1.06, z0: 0.015, x1: -0.9, z1: 0.075 },
       label: 'Big 8',
     },
     {
       id: 'dontPass',
       target: { kind: 'dontPass' },
-      rect: { x0: -1.0, z0: -0.045, x1: -0.14, z1: 0.075 },
+      rect: { x0: -0.88, z0: -0.045, x1: -0.14, z1: 0.075 },
       label: "Don't Pass",
     },
     {
@@ -121,9 +121,17 @@ function buildRegions(): LayoutRegion[] {
       anchor: { x: -0.35, z: 0.18 },
     },
     {
+      // The pass line wraps up the left end of the lanes, Vegas-style. Alias
+      // region: same bet, extra clickable surface (chips anchor on 'passLine').
+      id: 'passLine2',
+      target: { kind: 'passLine' },
+      rect: { x0: -1.26, z0: -0.385, x1: -1.1, z1: 0.1 },
+      label: 'Pass Line',
+    },
+    {
       id: 'passOdds',
       target: { kind: 'passOdds' },
-      rect: { x0: -1.0, z0: 0.28, x1: 0.1, z1: 0.42 },
+      rect: { x0: -0.88, z0: 0.28, x1: 0.1, z1: 0.42 },
       label: 'Pass Line Odds',
       anchor: { x: -0.35, z: 0.35 },
     },

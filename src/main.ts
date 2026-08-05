@@ -111,9 +111,25 @@ const hud = new Hud(document.body, {
     state = updateSettings(state, { keepWinningBetsOnTable: active });
     saveAll();
   },
+  onToggleView() {
+    prefs.view = prefs.view === 'overhead' ? 'rail' : 'overhead';
+    applyView();
+    saveAll();
+  },
   onRoll: doRoll,
 });
 hud.setKeepActive(state.settings.keepWinningBetsOnTable);
+
+/** Move the camera to the preferred betting view and match the DOF focus. */
+function applyView() {
+  view.cameraRig.setMode(prefs.view);
+  hud.setViewLabel(prefs.view);
+  view.setFocusDistance(prefs.view === 'overhead' ? view.cameraRig.overheadHeight : 1.3);
+}
+applyView();
+
+// Dismissing the dice close-up returns to the preferred betting view.
+view.cameraRig.onUserDismiss = () => applyView();
 
 const panels = new Panels(
   document.body,
@@ -210,7 +226,7 @@ new LayoutPicker(
   // Clicks cannot bet while the camera is off the rail view or dice are
   // rolling — latched at pointerdown by the picker.
   () =>
-    view.cameraRig.isOffRail ||
+    view.cameraRig.isFocusEngaged ||
     view.cameraRig.isAnimating ||
     rolling ||
     playback !== null ||
@@ -483,7 +499,9 @@ async function doRoll() {
   hud.setResult('');
   hud.showRollOutcome(null, []);
   hud.setFairness('solving…');
+  // The throw is always watched from the rail, whatever the betting view.
   view.cameraRig.release();
+  view.cameraRig.setMode('rail');
   view.setFocusDistance(1.3);
 
   const target = secureRoll();
