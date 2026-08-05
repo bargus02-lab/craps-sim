@@ -282,19 +282,9 @@ export function paintLayout(): THREE.CanvasTexture {
 
     box(ctx, region('dontPass'), 'rgba(233,228,210,0.8)', 3);
     box(ctx, region('dontPassOdds'), 'rgba(233,228,210,0.8)', 3);
-    text(ctx, "DON'T PASS BAR", -0.53, 0.016, 42, { color: RED, spacing: '4px' });
-    redPair(ctx, -0.235, 0.014, 6, 6, 38);
+    text(ctx, "DON'T PASS BAR", -0.64, 0.016, 42, { color: RED, spacing: '4px' });
+    redPair(ctx, -0.3, 0.014, 6, 6, 38);
     text(ctx, 'ODDS', -0.02, 0.016, 30, { color: RED, spacing: '4px' });
-  }
-
-  // Big 6 / Big 8.
-  {
-    box(ctx, region('big6'));
-    box(ctx, region('big8'));
-    text(ctx, 'BIG', -0.945, -0.016, 22, { color: GOLD });
-    text(ctx, '6', -0.885, -0.015, 38, { color: WHITE, weight: 900 });
-    text(ctx, 'BIG', -0.945, 0.044, 22, { color: GOLD });
-    text(ctx, '8', -0.885, 0.045, 38, { color: WHITE, weight: 900 });
   }
 
   // COME + FIELD lanes.

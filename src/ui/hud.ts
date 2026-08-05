@@ -3,11 +3,20 @@
 
 import { CHIP_DENOMS, CHIP_STYLE, type ChipDenom } from '../scene/chips';
 
+export interface PresetRow {
+  name: string;
+  cost: number;
+}
+
 export interface HudCallbacks {
   onSelectDenom(d: ChipDenom): void;
   onToggleKeep(active: boolean): void;
   onToggleView(): void;
   onRoll(): void;
+  getPresets(): PresetRow[];
+  onApplyPreset(i: number): void;
+  onSavePreset(i: number): void;
+  onRenamePreset(i: number): void;
 }
 
 export const fmt = (n: number) =>
@@ -40,6 +49,8 @@ export class Hud {
           <div class="pill"><span class="pill-label">TOTAL BET</span><span id="ontable"></span></div>
         </div>
         <div id="history"></div>
+        <div id="bigNum"></div>
+        <div id="presetPanel"></div>
         <div id="result"></div>
         <div id="rollnet"></div>
         <div id="breakdown"></div>
@@ -48,6 +59,7 @@ export class Hud {
         <div id="rail">
           <div id="chips"></div>
           <button id="keepBtn" class="active" title="Winning bets stay working; contract bets re-place automatically">KEEP WINNINGS</button>
+          <button id="presetBtn" title="Betting presets — save and re-place whole layouts in one click">PRESETS</button>
           <button id="viewBtn" title="Switch between the overhead betting view and the first-person rail view"></button>
           <button id="roll">ROLL</button>
         </div>
@@ -84,26 +96,55 @@ export class Hud {
                 display: flex; align-items: center; gap: 14px; pointer-events: auto;
                 flex-wrap: wrap; justify-content: center; max-width: 96vw; }
         #chips { display: flex; gap: 10px; align-items: center; }
-        .chip { width: 58px; height: 58px; border-radius: 50%; cursor: pointer; position: relative;
-                border: none; font: 700 1.05rem 'Avenir Next', sans-serif;
-                box-shadow: 0 4px 10px rgba(0,0,0,0.55), inset 0 0 0 4px rgba(255,255,255,0.14);
+        .chip { width: 82px; height: 82px; border-radius: 50%; cursor: pointer; position: relative;
+                border: none; font: 700 1.5rem 'Avenir Next', sans-serif;
+                box-shadow: 0 5px 12px rgba(0,0,0,0.55), inset 0 0 0 5px rgba(255,255,255,0.14);
                 transition: transform 0.12s, box-shadow 0.12s; }
-        .chip::after { content: ''; position: absolute; inset: 7px; border-radius: 50%;
-                       border: 2px dashed rgba(255,255,255,0.5); pointer-events: none; }
+        .chip::after { content: ''; position: absolute; inset: 9px; border-radius: 50%;
+                       border: 3px dashed rgba(255,255,255,0.5); pointer-events: none; }
         .chip.dark::after { border-color: rgba(255,255,255,0.55); }
         .chip.light::after { border-color: rgba(0,0,0,0.35); }
-        .chip:hover { transform: translateY(-4px); }
-        .chip.active { transform: translateY(-8px);
-                       box-shadow: 0 10px 18px rgba(0,0,0,0.6), 0 0 0 3px #e8c476,
-                                   inset 0 0 0 4px rgba(255,255,255,0.14); }
-        #keepBtn { pointer-events: auto; padding: 0.55em 1.1em; font-size: 0.78rem;
+        .chip:hover { transform: translateY(-5px); }
+        .chip.active { transform: translateY(-10px);
+                       box-shadow: 0 12px 20px rgba(0,0,0,0.6), 0 0 0 4px #e8c476,
+                                   inset 0 0 0 5px rgba(255,255,255,0.14); }
+        #keepBtn { pointer-events: auto; padding: 0.8em 1.4em; font-size: 0.92rem;
                    letter-spacing: 0.12em; color: #9fc4a8; background: rgba(14, 40, 24, 0.75);
                    border: 1px solid #2e5c3c; border-radius: 999px; cursor: pointer; }
         #keepBtn.active { background: #1e6b3c; color: #e2f5e6; box-shadow: 0 0 0 3px rgba(90, 200, 130, 0.35); }
-        #viewBtn { pointer-events: auto; padding: 0.55em 1.1em; font-size: 0.78rem;
+        #viewBtn, #presetBtn { pointer-events: auto; padding: 0.8em 1.4em; font-size: 0.92rem;
                    letter-spacing: 0.12em; color: #b8c8d8; background: rgba(18, 28, 40, 0.75);
                    border: 1px solid #3a4e64; border-radius: 999px; cursor: pointer; }
-        #viewBtn:hover { background: rgba(30, 46, 64, 0.9); }
+        #viewBtn:hover, #presetBtn:hover { background: rgba(30, 46, 64, 0.9); }
+        #presetBtn { color: #d8c8a0; background: rgba(40, 32, 14, 0.75); border-color: #64543a; }
+        #presetBtn:hover { background: rgba(58, 47, 22, 0.9); }
+        #bigNum { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0.7);
+                  font: 800 17vmin 'Avenir Next', sans-serif; color: #f5f0df;
+                  text-shadow: 0 0 40px rgba(0,0,0,0.85), 0 6px 24px rgba(0,0,0,0.9);
+                  opacity: 0; pointer-events: none; z-index: 8;
+                  transition: opacity 0.22s ease, transform 0.22s ease; }
+        #bigNum.show { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+        #bigNum.seven { color: #ff7a6a; }
+        #presetPanel { position: absolute; left: 50%; bottom: 150px; transform: translateX(-50%);
+                       width: 340px; max-height: 52vh; overflow-y: auto; display: none;
+                       background: rgba(9, 13, 11, 0.96); border: 1px solid #64543a;
+                       border-radius: 12px; padding: 10px 12px; pointer-events: auto; z-index: 6; }
+        #presetPanel .pp-head { font-size: 0.72rem; letter-spacing: 0.22em; color: #d8c8a0;
+                                text-align: center; margin-bottom: 8px; }
+        .pp-row { display: flex; align-items: center; gap: 8px; padding: 5px 4px;
+                  border-bottom: 1px solid rgba(100, 84, 58, 0.25); }
+        .pp-row:last-child { border-bottom: none; }
+        .pp-name { flex: 1; font-size: 0.9rem; color: #ece5d2; overflow: hidden;
+                   text-overflow: ellipsis; white-space: nowrap; }
+        .pp-cost { font: 700 0.8rem ui-monospace, monospace; color: #b8c0a8; min-width: 44px;
+                   text-align: right; }
+        .pp-row button { border-radius: 7px; border: 1px solid #4a5a4e; cursor: pointer;
+                         background: rgba(24, 34, 28, 0.9); color: #cfe0d2;
+                         font: 700 0.68rem 'Avenir Next', sans-serif; letter-spacing: 0.08em;
+                         padding: 5px 9px; }
+        .pp-row button:hover { background: rgba(40, 56, 46, 0.95); }
+        .pp-row .pp-bet { background: #1e6b3c; border-color: #2e8c50; color: #e8f8ec; }
+        .pp-row .pp-bet:disabled { opacity: 0.35; cursor: default; }
         #rollnet { position: absolute; top: calc(4vh + 2.6rem); width: 100%; text-align: center;
                    font-size: 1.55rem; font-weight: 700; letter-spacing: 0.08em;
                    text-shadow: 0 2px 10px #000; min-height: 1.8rem; }
@@ -131,8 +172,8 @@ export class Hud {
           /* Keep the money pills clear of the wrapped chip rail. */
           #bank { bottom: auto; top: 3.4rem; flex-direction: column; gap: 6px; }
         }
-        #roll { pointer-events: auto; width: 86px; height: 86px; border-radius: 50%;
-                font-size: 0.92rem; letter-spacing: 0.14em; font-weight: 700;
+        #roll { pointer-events: auto; width: 108px; height: 108px; border-radius: 50%;
+                font-size: 1.1rem; letter-spacing: 0.14em; font-weight: 700;
                 color: #f3e9d5; background: radial-gradient(circle at 35% 30%, #2c2e33, #17181c 70%);
                 border: 3px solid #c8a45a; cursor: pointer;
                 box-shadow: 0 6px 16px rgba(0,0,0,0.6), inset 0 0 0 6px rgba(200,164,90,0.12); }
@@ -179,7 +220,62 @@ export class Hud {
 
     document.getElementById('viewBtn')!.addEventListener('click', () => cb.onToggleView());
 
+    this.presetCb = cb;
+    document.getElementById('presetBtn')!.addEventListener('click', () => {
+      const panel = document.getElementById('presetPanel')!;
+      const open = panel.style.display !== 'block';
+      panel.style.display = open ? 'block' : 'none';
+      if (open) this.renderPresets();
+    });
+
     this.rollBtn.addEventListener('click', () => cb.onRoll());
+  }
+
+  private presetCb!: HudCallbacks;
+
+  /** (Re)draw the preset list — call after saves/renames while open. */
+  renderPresets() {
+    const panel = document.getElementById('presetPanel')!;
+    if (panel.style.display !== 'block') return;
+    const rows = this.presetCb.getPresets();
+    panel.innerHTML =
+      `<div class="pp-head">PRESETS — BET places the layout, SAVE stores your current bets</div>` +
+      rows
+        .map(
+          (p, i) =>
+            `<div class="pp-row" data-i="${i}">
+              <span class="pp-name">${i + 1}. ${p.name.replace(/[<>&]/g, '')}</span>
+              <span class="pp-cost">${p.cost > 0 ? fmt(p.cost) : '—'}</span>
+              <button class="pp-bet" data-a="${i}" ${p.cost > 0 ? '' : 'disabled'}>BET</button>
+              <button data-s="${i}">SAVE</button>
+              <button data-r="${i}">✎</button>
+            </div>`,
+        )
+        .join('');
+    panel.querySelectorAll<HTMLButtonElement>('[data-a]').forEach((b) =>
+      b.addEventListener('click', () => this.presetCb.onApplyPreset(Number(b.dataset.a))),
+    );
+    panel.querySelectorAll<HTMLButtonElement>('[data-s]').forEach((b) =>
+      b.addEventListener('click', () => this.presetCb.onSavePreset(Number(b.dataset.s))),
+    );
+    panel.querySelectorAll<HTMLButtonElement>('[data-r]').forEach((b) =>
+      b.addEventListener('click', () => this.presetCb.onRenamePreset(Number(b.dataset.r))),
+    );
+  }
+
+  closePresets() {
+    document.getElementById('presetPanel')!.style.display = 'none';
+  }
+
+  /** The rolled total, huge in the center of the screen for a beat. */
+  private bigNumTimer: ReturnType<typeof setTimeout> | null = null;
+  flashNumber(total: number) {
+    const el = document.getElementById('bigNum')!;
+    el.textContent = `${total}`;
+    el.classList.toggle('seven', total === 7);
+    el.classList.add('show');
+    if (this.bigNumTimer) clearTimeout(this.bigNumTimer);
+    this.bigNumTimer = setTimeout(() => el.classList.remove('show'), 1000);
   }
 
   /** The button advertises the view you'd switch TO. */

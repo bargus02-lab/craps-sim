@@ -234,6 +234,31 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 4 refinements (user-requested)
+
+- **Big 6 / Big 8 removed from the layout** (the engine still knows the bet;
+  there is simply no spot for it). The don't-pass band absorbed the space.
+- **All camera motion removed from the roll cycle**: no fly-to-rail on ROLL,
+  no settle close-up, no zoom-back. The view stays exactly where you put it
+  so betting resumes instantly; RAIL VIEW remains as a manual toggle.
+- **Stack total labels removed**; instead chips grew to 64 mm and the roll
+  total flashes huge in the center of the screen for one second (red on a 7).
+- **Bigger dock**: 82 px chip buttons, 108 px round ROLL, larger pills.
+- **Presets**: ten savable betting layouts behind a PRESETS button — BET
+  places a layout in one click (skipping anything currently illegal, with a
+  toast), SAVE captures your current placeable bets into a slot, ✎ renames.
+  Persisted with everything else. Slot 1 ships as **"Gus Bus"** — a $90
+  inside spread (6/8 for $30, 5/9 for $10, hard 6/8 for $5) as a starting
+  point; overwrite it with SAVE to make it the real Gus Bus if yours differs.
+  Traveled come/don't-come points are not capturable (they can't be
+  re-placed directly, per the rules).
+- **Hidden-tab fast-forward**: rAF pauses in background tabs, which used to
+  freeze a mid-flight replay; now backgrounding the tab immediately resolves
+  the roll (silently), so the game state never hangs in the air.
+- Verified end-to-end: the payout column predicted "9 +$14" with the Gus Bus
+  spread up, the 9 rolled, and it paid exactly +$14; the easy-6 row correctly
+  netted the hardway loss (+$30 easy / +$80 hard).
+
 ## Round 3 refinements (user-requested)
 
 - **Auto zoom-back**: the settle close-up holds ~2.4 s and then returns to the

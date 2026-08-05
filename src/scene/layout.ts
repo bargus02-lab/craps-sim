@@ -130,21 +130,9 @@ function buildRegions(): LayoutRegion[] {
       label: 'Come',
     },
     {
-      id: 'big6',
-      target: { kind: 'big6' },
-      rect: { x0: -0.98, z0: -0.045, x1: -0.84, z1: 0.015 },
-      label: 'Big 6',
-    },
-    {
-      id: 'big8',
-      target: { kind: 'big8' },
-      rect: { x0: -0.98, z0: 0.015, x1: -0.84, z1: 0.075 },
-      label: 'Big 8',
-    },
-    {
       id: 'dontPass',
       target: { kind: 'dontPass' },
-      rect: { x0: -0.82, z0: -0.045, x1: -0.14, z1: 0.075 },
+      rect: { x0: -1.0, z0: -0.045, x1: -0.14, z1: 0.075 },
       label: "Don't Pass",
     },
     {
@@ -177,7 +165,7 @@ function buildRegions(): LayoutRegion[] {
     {
       id: 'passOdds',
       target: { kind: 'passOdds' },
-      rect: { x0: -0.82, z0: 0.28, x1: 0.1, z1: 0.42 },
+      rect: { x0: -1.0, z0: 0.28, x1: 0.1, z1: 0.42 },
       label: 'Pass Line Odds',
       anchor: { x: -0.35, z: 0.35 },
     },

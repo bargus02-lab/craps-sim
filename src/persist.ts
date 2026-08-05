@@ -2,7 +2,12 @@
 // totals. Live bets are folded back into the bankroll on save, so a reload
 // never loses money. No backend, no network — and no expiry of any kind.
 
-import { defaultSettings, type Settings, type OddsPolicy } from './engine/state';
+import {
+  defaultSettings,
+  type Settings,
+  type OddsPolicy,
+  type BetTarget,
+} from './engine/state';
 
 export interface Prefs {
   sound: boolean;
@@ -35,6 +40,41 @@ export interface SessionTotals {
   net: number;
 }
 
+export interface PresetBet {
+  target: BetTarget;
+  amount: number;
+}
+
+export interface Preset {
+  name: string;
+  bets: PresetBet[];
+}
+
+export const PRESET_COUNT = 10;
+
+/**
+ * Slot 1 ships as "Gus Bus" — an aggressive inside-numbers spread as a
+ * starting point ($90: 6 & 8 heavy, 5 & 9, hard 6/8). Overwrite it with SAVE
+ * to make it your own.
+ */
+export function defaultPresets(): Preset[] {
+  const presets: Preset[] = [
+    {
+      name: 'Gus Bus',
+      bets: [
+        { target: { kind: 'place', number: 6 }, amount: 30 },
+        { target: { kind: 'place', number: 8 }, amount: 30 },
+        { target: { kind: 'place', number: 5 }, amount: 10 },
+        { target: { kind: 'place', number: 9 }, amount: 10 },
+        { target: { kind: 'hardway', number: 6 }, amount: 5 },
+        { target: { kind: 'hardway', number: 8 }, amount: 5 },
+      ],
+    },
+  ];
+  for (let i = 2; i <= PRESET_COUNT; i++) presets.push({ name: `Preset ${i}`, bets: [] });
+  return presets;
+}
+
 export interface SaveData {
   v: 1;
   /** Bankroll INCLUDING money currently on the table at save time. */
@@ -43,6 +83,7 @@ export interface SaveData {
   prefs: Prefs;
   stats: StatsData;
   session: SessionTotals;
+  presets: Preset[];
 }
 
 const KEY = 'firstPersonCraps.v1';
@@ -133,6 +174,65 @@ function normStats(s: unknown): StatsData {
   return e;
 }
 
+/** Validate a persisted bet target — unknown shapes become null. */
+function normTarget(t: unknown): BetTarget | null {
+  if (!t || typeof t !== 'object') return null;
+  const o = t as { kind?: unknown; number?: unknown; prop?: unknown };
+  const num = o.number;
+  switch (o.kind) {
+    case 'passLine':
+    case 'dontPass':
+    case 'come':
+    case 'dontCome':
+    case 'field':
+    case 'passOdds':
+    case 'dontPassOdds':
+      return { kind: o.kind };
+    case 'place':
+      return num === 4 || num === 5 || num === 6 || num === 8 || num === 9 || num === 10
+        ? { kind: 'place', number: num }
+        : null;
+    case 'buy':
+    case 'lay':
+      return num === 4 || num === 10 ? { kind: o.kind, number: num } : null;
+    case 'hardway':
+      return num === 4 || num === 6 || num === 8 || num === 10
+        ? { kind: 'hardway', number: num }
+        : null;
+    case 'prop': {
+      const props = ['any7', 'anyCraps', 'aces', 'boxcars', 'aceDeuce', 'yo', 'horn', 'cAndE'];
+      return typeof o.prop === 'string' && props.includes(o.prop)
+        ? { kind: 'prop', prop: o.prop as ('any7' | 'anyCraps' | 'aces' | 'boxcars' | 'aceDeuce' | 'yo' | 'horn' | 'cAndE') }
+        : null;
+    }
+    default:
+      return null; // big6/big8 and unknown kinds are not preset-able
+  }
+}
+
+function normPresets(p: unknown): Preset[] {
+  const out = defaultPresets();
+  if (!Array.isArray(p)) return out;
+  for (let i = 0; i < Math.min(p.length, PRESET_COUNT); i++) {
+    const raw = p[i] as { name?: unknown; bets?: unknown };
+    if (!raw || typeof raw !== 'object') continue;
+    const name =
+      typeof raw.name === 'string' && raw.name.trim().length > 0
+        ? raw.name.slice(0, 24)
+        : out[i].name;
+    const bets: PresetBet[] = [];
+    if (Array.isArray(raw.bets)) {
+      for (const b of raw.bets as Array<{ target?: unknown; amount?: unknown }>) {
+        const target = normTarget(b?.target);
+        const amount = num(b?.amount);
+        if (target && amount > 0) bets.push({ target, amount });
+      }
+    }
+    out[i] = { name, bets };
+  }
+  return out;
+}
+
 /**
  * Loads and NORMALIZES the save: every field is shape-checked with per-field
  * fallbacks, so a corrupt, truncated, or older save can never crash boot or
@@ -159,6 +259,7 @@ export function loadSave(): SaveData | null {
       },
       stats: normStats(d.stats),
       session: { wagered: num(sessionRaw.wagered), net: num(sessionRaw.net) },
+      presets: normPresets(d.presets),
     };
   } catch {
     return null;

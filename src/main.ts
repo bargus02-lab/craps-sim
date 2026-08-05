@@ -15,6 +15,8 @@ import {
   updateSettings,
   POINT_NUMBERS,
   HARDWAY_NUMBERS,
+  BUY_LAY_NUMBERS,
+  PROP_NAMES,
   type BetTarget,
 } from './engine/state';
 import { resolve as resolveRoll, type Resolution, type RollEvent } from './engine/resolve';
@@ -32,23 +34,20 @@ import {
   writeSave,
   emptyStats,
   defaultPrefs,
+  defaultPresets,
   type Prefs,
   type StatsData,
+  type Preset,
+  type PresetBet,
 } from './persist';
 
 document.body.innerHTML = `
   <div id="stage"></div>
-  <div id="stackTags"></div>
   <div id="payoutCol"></div>
   <style>
     html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0c10; }
     #stage { position: fixed; inset: 0; }
     #stage canvas { display: block; touch-action: none; }
-    #stackTags { position: fixed; inset: 0; pointer-events: none; z-index: 4; }
-    .stag { position: fixed; transform: translate(-50%, -100%); white-space: nowrap;
-            padding: 1px 7px; border-radius: 999px; font: 700 11px 'Avenir Next', sans-serif;
-            letter-spacing: 0.03em; color: #f2ecdd; background: rgba(14, 18, 15, 0.85);
-            border: 1px solid rgba(232, 196, 118, 0.65); box-shadow: 0 2px 5px rgba(0,0,0,0.5); }
     #payoutCol { position: fixed; right: 12px; top: 50%; transform: translateY(-50%);
                  display: none; flex-direction: column; gap: 3px; z-index: 5;
                  pointer-events: none; font-family: 'Avenir Next', 'Segoe UI', sans-serif; }
@@ -87,6 +86,7 @@ let state = createState({
 const prefs: Prefs = { ...defaultPrefs(), ...saved?.prefs };
 let stats: StatsData = saved?.stats ?? emptyStats();
 const session = { wagered: saved?.session.wagered ?? 0, net: saved?.session.net ?? 0 };
+const presets: Preset[] = saved?.presets ?? defaultPresets();
 
 sound.setEnabled(prefs.sound);
 view.setDof(prefs.dof);
@@ -100,6 +100,7 @@ function saveAll() {
     prefs,
     stats,
     session,
+    presets,
   });
 }
 window.addEventListener('beforeunload', saveAll);
@@ -108,10 +109,31 @@ window.addEventListener('beforeunload', saveAll);
 document.addEventListener('pointerdown', () => sound.unlock(), { capture: true });
 document.addEventListener('keydown', () => sound.unlock(), { capture: true });
 
-// rAF pauses in hidden tabs but the AudioContext keeps rendering — silence
-// the rolling loop so a backgrounded mid-roll tab doesn't drone forever.
+// rAF pauses in hidden tabs: silence the rolling loop AND fast-forward any
+// in-flight replay straight to its resolution, so backgrounding mid-roll
+// never leaves dice frozen in the air or a bet unresolved.
+function fastForwardRoll() {
+  if (preRoll) {
+    playback = { r: preRoll.r, track: preRoll.track, t: 0, nextImpact: 0 };
+    preRoll = null;
+  }
+  if (playback) {
+    const r = playback.r;
+    playback = null;
+    sound.stopRolling();
+    applyFrame(r, r.frameCount - 1, 0);
+    try {
+      finishRoll(r);
+    } finally {
+      rolling = false;
+      hud.setRollEnabled(true);
+    }
+  }
+}
 document.addEventListener('visibilitychange', () => {
-  if (document.hidden) sound.stopRolling();
+  if (!document.hidden) return;
+  sound.stopRolling();
+  fastForwardRoll();
 });
 
 // ------------------------------------------------------------- table pieces
@@ -130,6 +152,68 @@ view.onFrame((delta) => {
   flash.update(delta);
 });
 
+/** Snapshot the placeable bets on the table (traveled points are excluded). */
+function captureBets(): PresetBet[] {
+  const b = state.bets;
+  const out: PresetBet[] = [];
+  const add = (target: BetTarget, amount: number) => {
+    if (amount > 0) out.push({ target, amount });
+  };
+  add({ kind: 'passLine' }, b.passLine);
+  add({ kind: 'dontPass' }, b.dontPass);
+  add({ kind: 'come' }, b.come);
+  add({ kind: 'dontCome' }, b.dontCome);
+  add({ kind: 'field' }, b.field);
+  for (const n of POINT_NUMBERS) add({ kind: 'place', number: n }, b.place[n] ?? 0);
+  for (const n of BUY_LAY_NUMBERS) {
+    add({ kind: 'buy', number: n }, b.buy[n] ?? 0);
+    add({ kind: 'lay', number: n }, b.lay[n] ?? 0);
+  }
+  for (const n of HARDWAY_NUMBERS) add({ kind: 'hardway', number: n }, b.hardways[n] ?? 0);
+  for (const p of PROP_NAMES) add({ kind: 'prop', prop: p }, b.props[p]);
+  // Odds last so they land after their flats when the preset is re-placed.
+  add({ kind: 'passOdds' }, b.passOdds);
+  add({ kind: 'dontPassOdds' }, b.dontPassOdds);
+  return out;
+}
+
+const presetCost = (p: Preset) => p.bets.reduce((s, x) => s + x.amount, 0);
+
+function applyPreset(i: number) {
+  if (rolling || playback || preRoll) {
+    hud.toast('No more bets — the dice are rolling');
+    return;
+  }
+  const p = presets[i];
+  if (!p.bets.length) {
+    hud.toast('Preset is empty — place bets, then hit SAVE on a slot');
+    return;
+  }
+  const cost = presetCost(p);
+  if (cost > state.bankroll) {
+    hud.toast(`Not enough bankroll — "${p.name}" needs ${fmt(cost)}`);
+    return;
+  }
+  let placed = 0;
+  const skipped: string[] = [];
+  for (const bet of p.bets) {
+    try {
+      state = placeBet(state, bet.target, bet.amount);
+      placed += bet.amount;
+    } catch (err) {
+      skipped.push(err instanceof Error ? err.message : String(err));
+    }
+  }
+  sound.chip();
+  refresh();
+  hud.renderPresets();
+  hud.toast(
+    skipped.length
+      ? `${p.name}: ${fmt(placed)} placed · skipped ${skipped.length} (${skipped[0]})`
+      : `${p.name} — ${fmt(placed)} on the table`,
+  );
+}
+
 const hud = new Hud(document.body, {
   onSelectDenom(d) {
     activeDenom = d;
@@ -144,6 +228,27 @@ const hud = new Hud(document.body, {
     saveAll();
   },
   onRoll: doRoll,
+  getPresets: () => presets.map((p) => ({ name: p.name, cost: presetCost(p) })),
+  onApplyPreset: applyPreset,
+  onSavePreset(i) {
+    const bets = captureBets();
+    if (!bets.length) {
+      hud.toast('Place some bets first, then SAVE');
+      return;
+    }
+    presets[i] = { name: presets[i].name, bets };
+    saveAll();
+    hud.renderPresets();
+    hud.toast(`Saved ${fmt(bets.reduce((s, x) => s + x.amount, 0))} layout to "${presets[i].name}"`);
+  },
+  onRenamePreset(i) {
+    const name = window.prompt('Preset name', presets[i].name);
+    if (name && name.trim()) {
+      presets[i].name = name.trim().slice(0, 24);
+      saveAll();
+      hud.renderPresets();
+    }
+  },
 });
 hud.setKeepActive(state.settings.keepWinningBetsOnTable);
 
@@ -154,22 +259,6 @@ function applyView() {
   view.setFocusDistance(prefs.view === 'overhead' ? view.cameraRig.overheadHeight : 1.3);
 }
 applyView();
-
-// After the settle close-up, zoom back to the betting view on its own — no
-// click needed. Any interaction dismisses sooner.
-let autoReturn: ReturnType<typeof setTimeout> | null = null;
-function cancelAutoReturn() {
-  if (autoReturn) {
-    clearTimeout(autoReturn);
-    autoReturn = null;
-  }
-}
-
-// Dismissing the dice close-up returns to the preferred betting view.
-view.cameraRig.onUserDismiss = () => {
-  cancelAutoReturn();
-  applyView();
-};
 
 const panels = new Panels(
   document.body,
@@ -249,52 +338,6 @@ function amountFor(t: BetTarget): number {
   }
 }
 
-// ---- floating stack-total labels over every live bet -----------------------
-const stackTagsEl = document.getElementById('stackTags')!;
-interface StackTag {
-  el: HTMLElement;
-  x: number;
-  y: number;
-  z: number;
-}
-let stackTags: StackTag[] = [];
-
-function rebuildStackTags() {
-  stackTagsEl.innerHTML = '';
-  stackTags = [];
-  for (const s of chips.labels) {
-    const el = document.createElement('span');
-    el.className = 'stag';
-    el.textContent = fmt(s.amount);
-    stackTagsEl.appendChild(el);
-    stackTags.push({ el, x: s.x, y: s.topY + 0.006, z: s.z });
-  }
-}
-
-const tagVec = new THREE.Vector3();
-view.onFrame(() => {
-  const hide =
-    rolling ||
-    playback !== null ||
-    preRoll !== null ||
-    view.cameraRig.isFocusEngaged ||
-    view.cameraRig.isAnimating;
-  stackTagsEl.style.display = hide ? 'none' : 'block';
-  if (hide) return;
-  const el = view.renderer.domElement;
-  const r = el.getBoundingClientRect();
-  for (const t of stackTags) {
-    tagVec.set(t.x, t.y, t.z).project(view.cameraRig.camera);
-    if (tagVec.z > 1 || Math.abs(tagVec.x) > 1.05 || Math.abs(tagVec.y) > 1.05) {
-      t.el.style.display = 'none';
-      continue;
-    }
-    t.el.style.display = 'inline-block';
-    t.el.style.left = `${r.left + ((tagVec.x + 1) / 2) * r.width}px`;
-    t.el.style.top = `${r.top + ((-tagVec.y + 1) / 2) * r.height}px`;
-  }
-});
-
 // ---- right-side payout column: net result for every possible next total ----
 const payoutColEl = document.getElementById('payoutCol')!;
 const EASY_COMBO: Record<number, [1 | 2 | 3 | 4 | 5 | 6, 1 | 2 | 3 | 4 | 5 | 6]> = {
@@ -352,7 +395,6 @@ function updatePayoutColumn() {
 
 function refresh() {
   chips.update(state.bets);
-  rebuildStackTags();
   updatePayoutColumn();
   hud.setBankroll(state.bankroll, totalOnTable(state.bets));
   hud.setSession(
@@ -667,6 +709,7 @@ function finishRoll(r: SolveResult) {
 
   const evt = eventText(out.event, total);
   hud.setResult(`${a} + ${b} = ${total}${evt ? '  ·  ' + evt : ''}`);
+  hud.flashNumber(total);
   hud.showRollOutcome(
     entries.length
       ? rollNet > 0
@@ -680,37 +723,17 @@ function finishRoll(r: SolveResult) {
 
   puck.setPoint(state.point);
   refresh();
-
-  const mid = new THREE.Vector3()
-    .addVectors(view.dice[0].position, view.dice[1].position)
-    .multiplyScalar(0.5);
-  const sep = view.dice[0].position.distanceTo(view.dice[1].position);
-  const d = Math.max(0.42, sep * 1.7);
-  const eye = new THREE.Vector3(mid.x + d * 0.4, Math.max(0.28, d * 0.7), mid.z + d * 0.65);
-  view.cameraRig.pushTo(eye, mid);
-  view.setFocusDistance(eye.distanceTo(mid));
-
-  // Hold the close-up long enough to read the dice, then return by itself.
-  cancelAutoReturn();
-  autoReturn = setTimeout(() => {
-    autoReturn = null;
-    view.cameraRig.release();
-    applyView();
-  }, 2400);
+  // No camera movement: the view stays put so betting can resume instantly.
 }
 
 async function doRoll() {
   if (rolling || playback || preRoll) return;
-  cancelAutoReturn();
   rolling = true;
+  hud.closePresets();
   hud.setRollEnabled(false);
   hud.setResult('');
   hud.showRollOutcome(null, []);
   hud.setFairness('solving…');
-  // The throw is always watched from the rail, whatever the betting view.
-  view.cameraRig.release();
-  view.cameraRig.setMode('rail');
-  view.setFocusDistance(1.3);
 
   const target = secureRoll();
   const seed = secureSeed();
@@ -746,6 +769,7 @@ async function doRoll() {
 (window as unknown as Record<string, unknown>).__craps = {
   view,
   sound,
+  fastForwardRoll,
   get state() {
     return state;
   },
