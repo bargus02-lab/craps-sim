@@ -92,10 +92,14 @@ export class RailCamera {
     let dir: THREE.Vector3;
     let up: THREE.Vector3;
     if (planView) {
-      const hx = TABLE.feltHalfX + TABLE.wallThickness + 0.06;
-      const hz = TABLE.feltHalfZ + TABLE.wallThickness + 0.05;
-      d = Math.max(hx / Math.tan(hfov / 2), hz / Math.tan(vfov / 2)) + 0.04;
-      target = new THREE.Vector3(0, 0, 0);
+      // Tight fit: crop most of the wood, and bias the framing so the table
+      // sits slightly high on screen — the dock lives on the freed bottom
+      // strip instead of covering the pass line.
+      const zBias = 0.05;
+      const hx = TABLE.feltHalfX + TABLE.wallThickness + 0.015;
+      const hz = TABLE.feltHalfZ + TABLE.wallThickness * 0.5 + zBias;
+      d = Math.max(hx / Math.tan(hfov / 2), hz / Math.tan(vfov / 2)) + 0.02;
+      target = new THREE.Vector3(0, 0, zBias);
       dir = new THREE.Vector3(0, -1, 0);
       up = new THREE.Vector3(0, 0, -1); // far side of the table at the top
     } else {

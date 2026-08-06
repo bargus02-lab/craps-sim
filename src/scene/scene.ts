@@ -114,14 +114,28 @@ export function createScene(container: HTMLElement): CrapsScene {
     cameraRig.resize(w / h, h);
   };
   // ResizeObserver reports honest sizes on iOS rotation, where the classic
-  // resize event often fires with stale dimensions; keep both plus a delayed
-  // re-check after orientation changes for good measure.
+  // resize event often fires with stale dimensions; keep both, plus the
+  // visual viewport (Safari toolbar collapse), a delayed orientation
+  // re-check, and a slow watchdog that corrects any drift that slipped
+  // through — the canvas can never stay letterboxed.
   new ResizeObserver(applySize).observe(container);
   window.addEventListener('resize', applySize);
+  window.visualViewport?.addEventListener('resize', applySize);
   window.addEventListener('orientationchange', () => {
     applySize();
     setTimeout(applySize, 350);
+    setTimeout(applySize, 900);
   });
+  const sizeProbe = new THREE.Vector2();
+  setInterval(() => {
+    renderer.getSize(sizeProbe);
+    if (
+      Math.abs(sizeProbe.x - container.clientWidth) > 2 ||
+      Math.abs(sizeProbe.y - container.clientHeight) > 2
+    ) {
+      applySize();
+    }
+  }, 700);
 
   const frameCallbacks: Array<(delta: number) => void> = [];
   const clock = new THREE.Clock();

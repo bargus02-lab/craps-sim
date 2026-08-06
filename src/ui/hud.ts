@@ -217,33 +217,39 @@ export class Hud {
            left, one scrollable dock row bottom center, ROLL bottom right,
            nothing over the middle of the felt. */
         @media (max-width: 640px), (max-height: 500px) {
-          .chip { width: 52px; height: 52px; font-size: 0.92rem; }
-          .chip::after { inset: 5px; border-width: 2px; }
+          .chip { width: 42px; height: 42px; font-size: 0.78rem;
+                  box-shadow: 0 3px 7px rgba(0,0,0,0.5), inset 0 0 0 3px rgba(255,255,255,0.14); }
+          .chip::after { inset: 4px; border-width: 1.5px; }
           .chip:hover { transform: none; }
-          .chip.active { transform: translateY(-6px); }
-          #keepBtn, #viewBtn, #presetBtn { padding: 0.5em 0.7em; font-size: 0.62rem; }
-          #rail { gap: 6px; flex-wrap: nowrap;
-                  left: 50%; transform: translateX(-50%); right: auto;
-                  max-width: calc(100vw - 300px);
+          .chip.active { transform: translateY(-5px); }
+          #keepBtn, #viewBtn, #presetBtn { padding: 0.45em 0.6em; font-size: 0.54rem;
+                  letter-spacing: 0.06em; }
+          /* Centered WITHOUT a transform — a transformed ancestor would
+             capture the fixed-position ROLL button. */
+          #rail { gap: 5px; flex-wrap: nowrap;
+                  left: 118px; right: 118px; transform: none;
+                  width: fit-content; max-width: 100%; margin: 0 auto;
                   overflow-x: auto; scrollbar-width: none;
-                  bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px)); }
-          #roll { position: fixed; width: 78px; height: 78px; font-size: 0.85rem;
-                  right: max(0.8rem, env(safe-area-inset-right, 0px));
-                  bottom: calc(0.7rem + env(safe-area-inset-bottom, 0px)); }
-          #bank { top: auto; bottom: calc(0.7rem + env(safe-area-inset-bottom, 0px));
-                  left: max(0.7rem, env(safe-area-inset-left, 0px));
-                  flex-direction: column; gap: 4px; }
-          #bank .pill { min-width: 78px; padding: 2px 9px; }
-          #bank .pill-label { font-size: 0.5rem; }
-          #bankroll, #ontable { font-size: 0.82rem; }
-          #history { top: 0.4rem; gap: 4px; }
-          #history .h { width: 18px; height: 18px; font-size: 9.5px; }
-          #result { top: 2rem; font-size: 1.05rem; }
-          #result .dr { width: 24px; height: 24px; }
-          #rollnet { top: 4rem; font-size: 0.95rem; }
-          #breakdown { top: 5.6rem; font-size: 0.75rem; padding: 5px 10px; min-width: 190px; }
+                  bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px)); }
+          #roll { position: fixed; width: 62px; height: 62px; font-size: 0.72rem;
+                  border-width: 2.5px;
+                  right: max(0.7rem, env(safe-area-inset-right, 0px));
+                  bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)); }
+          #roll::after { inset: 5px; }
+          #bank { top: auto; bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+                  left: max(0.6rem, env(safe-area-inset-left, 0px));
+                  flex-direction: column; gap: 3px; }
+          #bank .pill { min-width: 66px; padding: 1px 8px; border-width: 1px; }
+          #bank .pill-label { font-size: 0.44rem; }
+          #bankroll, #ontable { font-size: 0.72rem; }
+          #history { top: 0.35rem; gap: 3px; }
+          #history .h { width: 16px; height: 16px; font-size: 8.5px; }
+          #result { top: 1.7rem; font-size: 0.95rem; }
+          #result .dr { width: 22px; height: 22px; }
+          #rollnet { top: 3.4rem; font-size: 0.88rem; }
+          #breakdown { top: 4.9rem; font-size: 0.72rem; padding: 4px 9px; min-width: 180px; }
           #fair, #session { display: none; }
-          #presetPanel { width: 92vw; bottom: 92px; max-height: 62vh; }
+          #presetPanel { width: 92vw; bottom: 78px; max-height: 64vh; }
         }
         /* Phones must play in landscape: block portrait entirely. */
         @media (orientation: portrait) and (pointer: coarse) and (max-width: 940px) {
