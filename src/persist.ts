@@ -55,21 +55,18 @@ export interface Preset {
 export const PRESET_COUNT = 10;
 
 /**
- * Slot 1 ships as "Gus Bus" — an aggressive inside-numbers spread as a
- * starting point ($90: 6 & 8 heavy, 5 & 9, hard 6/8). Overwrite it with SAVE
- * to make it your own.
+ * Slot 1 is the "Gus Bus", per the house recipe: $25 on the 5 and 9, $35 on
+ * the 6 and 8 ($120 across the inside). Overwrite with SAVE to customize.
  */
 export function defaultPresets(): Preset[] {
   const presets: Preset[] = [
     {
       name: 'Gus Bus',
       bets: [
-        { target: { kind: 'place', number: 6 }, amount: 30 },
-        { target: { kind: 'place', number: 8 }, amount: 30 },
-        { target: { kind: 'place', number: 5 }, amount: 10 },
-        { target: { kind: 'place', number: 9 }, amount: 10 },
-        { target: { kind: 'hardway', number: 6 }, amount: 5 },
-        { target: { kind: 'hardway', number: 8 }, amount: 5 },
+        { target: { kind: 'place', number: 5 }, amount: 25 },
+        { target: { kind: 'place', number: 9 }, amount: 25 },
+        { target: { kind: 'place', number: 6 }, amount: 35 },
+        { target: { kind: 'place', number: 8 }, amount: 35 },
       ],
     },
   ];
@@ -235,6 +232,10 @@ function normPresets(p: unknown): Preset[] {
     }
     out[i] = { name, bets };
   }
+  // The Gus Bus recipe was finalized (25 on 5/9, 35 on 6/8): saves whose slot
+  // 1 still carries the stock name get the canonical bets; renamed slots are
+  // the player's own and stay untouched.
+  if (out[0].name === 'Gus Bus') out[0] = defaultPresets()[0];
   return out;
 }
 

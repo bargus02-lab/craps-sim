@@ -71,6 +71,14 @@ document.body.innerHTML = `
       #payoutCol { right: 6px; }
       #payoutCol .pc-val { min-width: 44px; font-size: 10.5px; }
     }
+    /* Landscape phones are short: compress the column so all 11 rows fit. */
+    @media (max-height: 500px) {
+      #payoutCol { gap: 1px; }
+      #payoutCol .pc-row { padding: 0 6px 0 2px; }
+      #payoutCol .pc-num { width: 18px; height: 18px; font-size: 9.5px; }
+      #payoutCol .pc-val { font-size: 9.5px; min-width: 36px; }
+      #payoutCol .pc-hard { font-size: 8px; }
+    }
   </style>`;
 
 const stage = document.getElementById('stage')!;

@@ -49,6 +49,7 @@ export class Hud {
           <div class="pill"><span class="pill-label">TOTAL BET</span><span id="ontable"></span></div>
         </div>
         <div id="history"></div>
+        <div id="rotateHint">Rotate your phone for the full table&nbsp;↻</div>
         <div id="bigNum"></div>
         <div id="presetPanel"></div>
         <div id="result"></div>
@@ -166,15 +167,14 @@ export class Hud {
         #breakdown .info { color: #8fb2c8; }
         #session { position: absolute; right: 1rem; top: 2.4rem; text-align: right;
                    font: 11px ui-monospace, monospace; color: #8a9aa8; }
-        @media (max-width: 900px) {
-          #result { font-size: 1.3rem; top: 8.5rem; }
-          #rollnet { font-size: 1.1rem; top: 10.2rem; }
-          #breakdown { top: 12rem; }
-          #fair { max-width: 60vw; }
-          #session { top: 4.6rem; }
-          /* Keep the money pills clear of the wrapped chip rail. */
-          #bank { bottom: auto; top: 3.4rem; flex-direction: column; gap: 6px; }
-        }
+        /* Kill iOS double-tap zoom / 300ms delay on every control. */
+        #hud button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
+        #rail { padding-bottom: env(safe-area-inset-bottom, 0px); }
+        #rotateHint { display: none; position: fixed; top: 3.4rem; left: 50%;
+                      transform: translateX(-50%); padding: 6px 16px; z-index: 6;
+                      background: rgba(10, 14, 12, 0.88); border: 1px solid #c8a45a;
+                      border-radius: 999px; color: #e8dcba; font-size: 12px;
+                      letter-spacing: 0.06em; pointer-events: none; white-space: nowrap; }
         #roll { pointer-events: auto; width: 112px; height: 112px; border-radius: 50%;
                 font-size: 1.18rem; letter-spacing: 0.16em; font-weight: 800;
                 color: #fdf8e7; cursor: pointer; position: relative;
@@ -198,6 +198,41 @@ export class Hud {
         }
         #fair { position: absolute; right: 1rem; top: 0.8rem; text-align: right;
                 font: 11px ui-monospace, monospace; color: #6d7a86; max-width: 40vw; }
+        /* ---- responsive blocks LAST so they beat the base rules ---- */
+        @media (max-width: 900px) {
+          #result { font-size: 1.3rem; top: 8.5rem; }
+          #rollnet { font-size: 1.1rem; top: 10.2rem; }
+          #breakdown { top: 12rem; }
+          #fair { max-width: 60vw; }
+          #session { top: 4.6rem; }
+          /* Keep the money pills clear of the wrapped chip rail. */
+          #bank { bottom: auto; top: 3.4rem; flex-direction: column; gap: 6px; }
+        }
+        /* Phones (portrait OR landscape): one-row dock on the left, ROLL
+           pinned to the bottom-right corner — nothing stacks over the felt. */
+        @media (max-width: 640px), (max-height: 500px) {
+          .chip { width: 54px; height: 54px; font-size: 0.95rem; }
+          .chip::after { inset: 5px; border-width: 2px; }
+          #keepBtn, #viewBtn, #presetBtn { padding: 0.5em 0.75em; font-size: 0.66rem; }
+          #rail { gap: 7px; flex-wrap: nowrap; transform: none;
+                  left: max(0.7rem, env(safe-area-inset-left, 0px));
+                  right: auto; max-width: calc(100vw - 118px);
+                  overflow-x: auto; scrollbar-width: none;
+                  bottom: calc(1vh + env(safe-area-inset-bottom, 0px)); }
+          #roll { position: fixed; width: 84px; height: 84px; font-size: 0.9rem;
+                  right: max(0.8rem, env(safe-area-inset-right, 0px));
+                  bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px)); }
+          #bank { left: max(0.6rem, env(safe-area-inset-left, 0px)); }
+          #bank .pill { min-width: 84px; padding: 3px 10px; }
+          #bankroll, #ontable { font-size: 0.9rem; }
+          #history .h { width: 20px; height: 20px; font-size: 10px; }
+          #result .dr { width: 26px; height: 26px; }
+          #presetPanel { width: 92vw; bottom: 110px; }
+          #rotateHint { top: 30%; }
+        }
+        @media (orientation: portrait) and (max-width: 640px) {
+          #rotateHint { display: block; }
+        }
       </style>`,
     );
 

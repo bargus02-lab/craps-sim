@@ -234,6 +234,24 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 9 — Gus Bus recipe, iPhone support, published (user-requested)
+
+- **Gus Bus finalized**: $25 on the 5 and 9, $35 on the 6 and 8 ($120 inside).
+  Saves whose slot 1 still carries the stock name receive the new recipe;
+  renamed slots stay untouched.
+- **iPhone/mobile pass**: viewport locked (no pinch-zoom, viewport-fit=cover),
+  safe-area insets on the dock and pills, touch-action manipulation on all
+  controls (no double-tap zoom or tap delay), compact one-row scrollable dock
+  with the ROLL button pinned bottom-right on phones (portrait or landscape),
+  shrunken history/payout column for short screens, and a "rotate your phone"
+  hint in portrait. Media queries moved after base rules (a cascade-order bug
+  had been silently disabling the compact ROLL placement). Audio unlocks on
+  first touch; pixel-ratio cap keeps iPhone GPUs comfortable.
+- **Published to GitHub Pages**: built with --base=/craps-sim/ and deployed
+  from the gh-pages branch. Live at
+  https://bargus02-lab.github.io/craps-sim/ — verified end-to-end on the
+  deployed build (boot, presets, solver workers, rolls).
+
 ## Round 8 — dice visibility + history points (user-requested)
 
 - **Dice never leave the frame**: the solver now rejects any settle right of
