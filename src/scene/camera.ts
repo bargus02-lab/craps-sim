@@ -76,26 +76,42 @@ export class RailCamera {
   }
 
   private overheadDist = 3;
+  private viewportH = 800;
 
   private computeOverhead(aspect: number) {
-    // Not straight down: a gently tilted plan view (the "main view"), like a
-    // player leaning over the table. Framed on the ACTIVE half of the table
-    // (the printed end section + props, x -1.3..0.7) rather than the empty
-    // shooter's apron, with the rail allowed to crop top/bottom.
-    const elevation = THREE.MathUtils.degToRad(64);
+    // Phones (short viewports) get a straight-down plan view of the WHOLE
+    // table — its 1.9:1 footprint almost exactly matches a landscape phone.
+    // Larger screens keep the gently tilted lean-over view framed on the
+    // active half of the layout.
+    const planView = this.viewportH <= 540;
     const hfov = THREE.MathUtils.degToRad(CAMERA.horizontalFov);
     const vfov = THREE.MathUtils.degToRad(verticalFov(aspect));
-    const hx = 1.14; // half-width of the framed area around the layout
-    const hz = TABLE.feltHalfZ + TABLE.wallThickness + 0.03;
-    const dW = hx / Math.tan(hfov / 2);
-    const dH = (hz * Math.sin(elevation) + 0.06) / Math.tan(vfov / 2);
-    const d = Math.max(dW, dH) + 0.06;
-    this.overheadDist = d;
 
-    const target = new THREE.Vector3(-0.2, 0, -0.02);
-    const dir = new THREE.Vector3(0, -Math.sin(elevation), -Math.cos(elevation));
+    let d: number;
+    let target: THREE.Vector3;
+    let dir: THREE.Vector3;
+    let up: THREE.Vector3;
+    if (planView) {
+      const hx = TABLE.feltHalfX + TABLE.wallThickness + 0.06;
+      const hz = TABLE.feltHalfZ + TABLE.wallThickness + 0.05;
+      d = Math.max(hx / Math.tan(hfov / 2), hz / Math.tan(vfov / 2)) + 0.04;
+      target = new THREE.Vector3(0, 0, 0);
+      dir = new THREE.Vector3(0, -1, 0);
+      up = new THREE.Vector3(0, 0, -1); // far side of the table at the top
+    } else {
+      const elevation = THREE.MathUtils.degToRad(64);
+      const hx = 1.14; // half-width of the framed area around the layout
+      const hz = TABLE.feltHalfZ + TABLE.wallThickness + 0.03;
+      const dW = hx / Math.tan(hfov / 2);
+      const dH = (hz * Math.sin(elevation) + 0.06) / Math.tan(vfov / 2);
+      d = Math.max(dW, dH) + 0.06;
+      target = new THREE.Vector3(-0.2, 0, -0.02);
+      dir = new THREE.Vector3(0, -Math.sin(elevation), -Math.cos(elevation));
+      up = new THREE.Vector3(0, 1, 0);
+    }
+    this.overheadDist = d;
     this.overheadPos.copy(target).addScaledVector(dir, -d);
-    const m = new THREE.Matrix4().lookAt(this.overheadPos, target, new THREE.Vector3(0, 1, 0));
+    const m = new THREE.Matrix4().lookAt(this.overheadPos, target, up);
     this.overheadQuat.setFromRotationMatrix(m);
   }
 
@@ -223,7 +239,8 @@ export class RailCamera {
     }
   }
 
-  resize(aspect: number) {
+  resize(aspect: number, viewportH?: number) {
+    if (viewportH !== undefined) this.viewportH = viewportH;
     this.camera.aspect = aspect;
     this.camera.fov = verticalFov(aspect);
     this.camera.updateProjectionMatrix();

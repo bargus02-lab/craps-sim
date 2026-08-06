@@ -234,6 +234,25 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 10 — landscape-only phones, plan view (user-requested)
+
+- **Phones are landscape-only**: portrait on a touch device shows a
+  full-screen "rotate to landscape" screen (side UI hidden — the fixed HUD
+  creates a stacking context, so sibling overlays are hidden explicitly).
+- **The phone view is a straight-down plan view** of the whole table — the
+  table's ~1.9:1 footprint nearly matches a landscape phone, so it fills the
+  screen edge-to-edge. Screens taller than 540 px keep the 64° lean-over
+  view; the camera swaps automatically on resize/rotation.
+- **iOS rotation bug fixed**: the classic resize event reports stale
+  dimensions on iOS, which had been framing the camera for the wrong
+  viewport (the reported broken screenshot). Sizing now runs through a
+  ResizeObserver plus a delayed orientation-change re-check.
+- **Phone HUD**: everything hugs the edges — STATS/SETTINGS tiny top-left
+  row, history top-center, balance/total-bet pills bottom-left, one
+  scrollable dock row bottom-center, ROLL pinned bottom-right; the fairness
+  and session lines hide, the payout column compresses and lifts clear of
+  ROLL.
+
 ## Round 9 — Gus Bus recipe, iPhone support, published (user-requested)
 
 - **Gus Bus finalized**: $25 on the 5 and 9, $35 on the 6 and 8 ($120 inside).

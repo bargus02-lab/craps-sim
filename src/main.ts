@@ -71,12 +71,19 @@ document.body.innerHTML = `
       #payoutCol { right: 6px; }
       #payoutCol .pc-val { min-width: 44px; font-size: 10.5px; }
     }
-    /* Landscape phones are short: compress the column so all 11 rows fit. */
+    /* Portrait phones show only the rotate screen. */
+    @media (orientation: portrait) and (pointer: coarse) and (max-width: 940px) {
+      #payoutCol { display: none !important; }
+    }
+    /* Landscape phones are short: compress the column so all 11 rows fit,
+       and lift it clear of the corner ROLL button. */
     @media (max-height: 500px) {
-      #payoutCol { gap: 1px; }
+      #payoutCol { gap: 1px; right: max(4px, env(safe-area-inset-right, 0px));
+                   top: 42%; }
+      #payoutCol .pc-head { font-size: 7.5px; margin-bottom: 1px; }
       #payoutCol .pc-row { padding: 0 6px 0 2px; }
-      #payoutCol .pc-num { width: 18px; height: 18px; font-size: 9.5px; }
-      #payoutCol .pc-val { font-size: 9.5px; min-width: 36px; }
+      #payoutCol .pc-num { width: 17px; height: 17px; font-size: 9px; }
+      #payoutCol .pc-val { font-size: 9px; min-width: 34px; }
       #payoutCol .pc-hard { font-size: 8px; }
     }
   </style>`;
@@ -268,9 +275,12 @@ function applyView() {
   view.setFocusDistance(prefs.view === 'overhead' ? view.cameraRig.overheadHeight : 1.3);
 }
 applyView();
-// The overhead camera distance depends on the window aspect — keep the
-// depth-of-field focal plane matched when the window changes.
+// The overhead camera distance depends on the viewport — keep the camera
+// mode and depth-of-field focal plane matched whenever it changes (a
+// ResizeObserver reports honest sizes on iOS rotation, unlike resize).
 window.addEventListener('resize', () => applyView());
+new ResizeObserver(() => applyView()).observe(document.getElementById('stage')!);
+window.addEventListener('orientationchange', () => setTimeout(() => applyView(), 400));
 
 const panels = new Panels(
   document.body,

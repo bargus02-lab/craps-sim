@@ -42,6 +42,16 @@ export class Panels {
         @media (max-width: 900px) {
           #panelBtns { top: 11.4rem; }
         }
+        @media (max-width: 640px), (max-height: 500px) {
+          #panelBtns { top: 0.4rem; left: max(0.6rem, env(safe-area-inset-left, 0px));
+                       flex-direction: row; gap: 6px; }
+          #panelBtns button { padding: 0.35em 0.7em; font-size: 0.56rem; }
+          .panel { width: min(340px, 88vw); }
+        }
+        /* Portrait phones show only the rotate screen. */
+        @media (orientation: portrait) and (pointer: coarse) and (max-width: 940px) {
+          #panelBtns, .panel { display: none !important; }
+        }
         #panelBtns button { pointer-events: auto; padding: 0.45em 1em; font: 700 0.68rem 'Avenir Next', sans-serif;
                             letter-spacing: 0.18em; color: #cdd6c8; background: rgba(16, 22, 18, 0.8);
                             border: 1px solid #38443c; border-radius: 8px; cursor: pointer; }

@@ -86,6 +86,7 @@ export function createScene(container: HTMLElement): CrapsScene {
   scene.add(dice[0], dice[1]);
 
   const cameraRig = new RailCamera(container.clientWidth / container.clientHeight);
+  cameraRig.resize(container.clientWidth / container.clientHeight, container.clientHeight);
   cameraRig.attach(renderer.domElement);
 
   // Subtle depth of field: full-scene render + bokeh, toggleable.
@@ -101,13 +102,25 @@ export function createScene(container: HTMLElement): CrapsScene {
   let dofEnabled = true;
   let focusTarget = 1.3;
 
-  window.addEventListener('resize', () => {
+  const applySize = () => {
+    const w = container.clientWidth;
+    const h = container.clientHeight;
+    if (w === 0 || h === 0) return;
     const ratio = Math.min(window.devicePixelRatio, PIXEL_RATIO_CAP); // may change across monitors/zoom
     renderer.setPixelRatio(ratio);
-    renderer.setSize(container.clientWidth, container.clientHeight);
+    renderer.setSize(w, h);
     composer.setPixelRatio(ratio);
-    composer.setSize(container.clientWidth, container.clientHeight);
-    cameraRig.resize(container.clientWidth / container.clientHeight);
+    composer.setSize(w, h);
+    cameraRig.resize(w / h, h);
+  };
+  // ResizeObserver reports honest sizes on iOS rotation, where the classic
+  // resize event often fires with stale dimensions; keep both plus a delayed
+  // re-check after orientation changes for good measure.
+  new ResizeObserver(applySize).observe(container);
+  window.addEventListener('resize', applySize);
+  window.addEventListener('orientationchange', () => {
+    applySize();
+    setTimeout(applySize, 350);
   });
 
   const frameCallbacks: Array<(delta: number) => void> = [];

@@ -49,7 +49,10 @@ export class Hud {
           <div class="pill"><span class="pill-label">TOTAL BET</span><span id="ontable"></span></div>
         </div>
         <div id="history"></div>
-        <div id="rotateHint">Rotate your phone for the full table&nbsp;↻</div>
+        <div id="portraitBlock"><div>
+          <div class="pb-dice">🎲</div>
+          ROTATE TO LANDSCAPE<br/><span>the table needs the whole screen</span>
+        </div></div>
         <div id="bigNum"></div>
         <div id="presetPanel"></div>
         <div id="result"></div>
@@ -170,11 +173,13 @@ export class Hud {
         /* Kill iOS double-tap zoom / 300ms delay on every control. */
         #hud button { touch-action: manipulation; -webkit-tap-highlight-color: transparent; }
         #rail { padding-bottom: env(safe-area-inset-bottom, 0px); }
-        #rotateHint { display: none; position: fixed; top: 3.4rem; left: 50%;
-                      transform: translateX(-50%); padding: 6px 16px; z-index: 6;
-                      background: rgba(10, 14, 12, 0.88); border: 1px solid #c8a45a;
-                      border-radius: 999px; color: #e8dcba; font-size: 12px;
-                      letter-spacing: 0.06em; pointer-events: none; white-space: nowrap; }
+        #portraitBlock { display: none; position: fixed; inset: 0; z-index: 60;
+                         background: #0a0c10; align-items: center; justify-content: center;
+                         text-align: center; color: #e8dcba; font-size: 1.05rem;
+                         letter-spacing: 0.14em; font-weight: 700; line-height: 2; }
+        #portraitBlock .pb-dice { font-size: 3rem; }
+        #portraitBlock span { font-size: 0.78rem; color: #8a9a8e; letter-spacing: 0.08em;
+                              font-weight: 500; }
         #roll { pointer-events: auto; width: 112px; height: 112px; border-radius: 50%;
                 font-size: 1.18rem; letter-spacing: 0.16em; font-weight: 800;
                 color: #fdf8e7; cursor: pointer; position: relative;
@@ -208,30 +213,41 @@ export class Hud {
           /* Keep the money pills clear of the wrapped chip rail. */
           #bank { bottom: auto; top: 3.4rem; flex-direction: column; gap: 6px; }
         }
-        /* Phones (portrait OR landscape): one-row dock on the left, ROLL
-           pinned to the bottom-right corner — nothing stacks over the felt. */
+        /* Phone landscape: everything hugs the screen edges — pills bottom
+           left, one scrollable dock row bottom center, ROLL bottom right,
+           nothing over the middle of the felt. */
         @media (max-width: 640px), (max-height: 500px) {
-          .chip { width: 54px; height: 54px; font-size: 0.95rem; }
+          .chip { width: 52px; height: 52px; font-size: 0.92rem; }
           .chip::after { inset: 5px; border-width: 2px; }
-          #keepBtn, #viewBtn, #presetBtn { padding: 0.5em 0.75em; font-size: 0.66rem; }
-          #rail { gap: 7px; flex-wrap: nowrap; transform: none;
-                  left: max(0.7rem, env(safe-area-inset-left, 0px));
-                  right: auto; max-width: calc(100vw - 118px);
+          .chip:hover { transform: none; }
+          .chip.active { transform: translateY(-6px); }
+          #keepBtn, #viewBtn, #presetBtn { padding: 0.5em 0.7em; font-size: 0.62rem; }
+          #rail { gap: 6px; flex-wrap: nowrap;
+                  left: 50%; transform: translateX(-50%); right: auto;
+                  max-width: calc(100vw - 300px);
                   overflow-x: auto; scrollbar-width: none;
-                  bottom: calc(1vh + env(safe-area-inset-bottom, 0px)); }
-          #roll { position: fixed; width: 84px; height: 84px; font-size: 0.9rem;
+                  bottom: calc(0.6rem + env(safe-area-inset-bottom, 0px)); }
+          #roll { position: fixed; width: 78px; height: 78px; font-size: 0.85rem;
                   right: max(0.8rem, env(safe-area-inset-right, 0px));
-                  bottom: calc(0.8rem + env(safe-area-inset-bottom, 0px)); }
-          #bank { left: max(0.6rem, env(safe-area-inset-left, 0px)); }
-          #bank .pill { min-width: 84px; padding: 3px 10px; }
-          #bankroll, #ontable { font-size: 0.9rem; }
-          #history .h { width: 20px; height: 20px; font-size: 10px; }
-          #result .dr { width: 26px; height: 26px; }
-          #presetPanel { width: 92vw; bottom: 110px; }
-          #rotateHint { top: 30%; }
+                  bottom: calc(0.7rem + env(safe-area-inset-bottom, 0px)); }
+          #bank { top: auto; bottom: calc(0.7rem + env(safe-area-inset-bottom, 0px));
+                  left: max(0.7rem, env(safe-area-inset-left, 0px));
+                  flex-direction: column; gap: 4px; }
+          #bank .pill { min-width: 78px; padding: 2px 9px; }
+          #bank .pill-label { font-size: 0.5rem; }
+          #bankroll, #ontable { font-size: 0.82rem; }
+          #history { top: 0.4rem; gap: 4px; }
+          #history .h { width: 18px; height: 18px; font-size: 9.5px; }
+          #result { top: 2rem; font-size: 1.05rem; }
+          #result .dr { width: 24px; height: 24px; }
+          #rollnet { top: 4rem; font-size: 0.95rem; }
+          #breakdown { top: 5.6rem; font-size: 0.75rem; padding: 5px 10px; min-width: 190px; }
+          #fair, #session { display: none; }
+          #presetPanel { width: 92vw; bottom: 92px; max-height: 62vh; }
         }
-        @media (orientation: portrait) and (max-width: 640px) {
-          #rotateHint { display: block; }
+        /* Phones must play in landscape: block portrait entirely. */
+        @media (orientation: portrait) and (pointer: coarse) and (max-width: 940px) {
+          #portraitBlock { display: flex; }
         }
       </style>`,
     );
