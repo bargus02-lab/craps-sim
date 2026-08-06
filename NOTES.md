@@ -234,6 +234,43 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 13 — sharpness, drag-off, dice in sight (user-requested)
+
+- **Sharper on phones**: render resolution now comes from a pixel *budget*
+  (`min(devicePixelRatio, 2, sqrt(2.6e6 / cssPixels))`) instead of a flat 1.5×
+  cap, so a small viewport spends its budget on sharpness — an iPhone goes
+  1.5× → 2× (1864×860 at 932×430) while a desktop window stays at ~1.58×,
+  the same 2.6 MP it drew before. The phone plan view also skips depth of
+  field entirely (nothing to defocus looking straight down; it only softened
+  the layout text and cost two post passes).
+- **Dock chips no longer sheared**: `overflow-x: auto` clips vertically too,
+  so the raised selected chip lost its top — the rail carries 9px of top
+  padding inside the scroll box.
+- **Drag a chip off a stack to remove it** (touch equivalent of ctrl+click):
+  a press that travels 22px off the stack it started on pulls one chip of
+  the selected denomination — $35 with $5 up drops to $30. The threshold sits
+  well above the 6px click slop, the region is captured at pointerdown, it
+  fires once per gesture, ignores bare felt, and is disabled at the rail
+  where a drag steers the camera.
+- **Adversarial review fixes** (2 critical, caught before shipping):
+  (a) the pixel budget had no lower bound, so any viewport past 2.6 MP drew a
+  buffer *smaller* than its own CSS box and let the browser upscale it —
+  measured 0.84× at 2560×1440, i.e. this "sharpness" change made big screens
+  blurrier than the flat cap it replaced. The budget now only ever raises the
+  ratio (floored at the old `min(dpr, 1.5)`), verified across real resizes:
+  2.0 at 932×430, 1.59 at 1280×800, 1.50 at 1600×1000, never upscaled.
+  (b) drag-off committed the removal from `pointermove`, so money left the
+  table mid-gesture with no way back — and an iOS `pointercancel` (edge
+  swipe, palm, incoming call) took the chip anyway. It now *arms* on the move
+  and only cashes on release, through the same guards a click uses, and
+  dropping the chip back on its stack cancels it.
+- **Dice always land in sight**: the solver's rest zone gained `restMinX`
+  (−1.16, off the far wall) and `restMaxAbsZ` (0.5 — the dock's top edge
+  projects to z ≈ 0.54, so this keeps a die's width of margin). Measured
+  before: 6 of 40 settles hidden under the dock, max screen-y 409 against a
+  dock top of 377. After: 0 of 40, max 314. Costs ~7% median solve time
+  (210 ms vs 197 ms single-threaded; the 3-worker race absorbs it).
+
 ## Round 12 — phone HUD: corners + readable chips (user-requested)
 
 - **Dock hugs the bottom**: the phone rail drops its safe-area padding and

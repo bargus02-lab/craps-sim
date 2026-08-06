@@ -26,14 +26,27 @@ export interface CrapsScene {
 }
 
 export function createScene(container: HTMLElement): CrapsScene {
-  // Pixel-ratio cap 1.5: on Retina/4K this cuts fragment work ~44% vs 2.0
-  // with barely visible sharpness loss — the single biggest perf lever here.
-  const PIXEL_RATIO_CAP = 1.5;
+  // Render resolution comes from a pixel BUDGET rather than a flat cap, so a
+  // small viewport can spend its budget on sharpness: a phone (≈0.4 MP of CSS
+  // pixels) renders at the full 2x, where the old flat 1.5x cap left it soft.
+  //
+  // The budget only ever RAISES the ratio — it is floored at the old cap, so
+  // a large window renders exactly as it always did. Without that floor the
+  // budget term falls under 1.0 past ~2.6 MP and the canvas would be drawn
+  // smaller than its own CSS box and upscaled: blurrier than doing nothing.
+  const PIXEL_BUDGET = 2.6e6;
+  const RATIO_CAP = 2;
+  const RATIO_FLOOR = 1.5;
+  const pixelRatio = () => {
+    const css = Math.max(1, container.clientWidth * container.clientHeight);
+    const budgeted = Math.max(Math.sqrt(PIXEL_BUDGET / css), RATIO_FLOOR);
+    return Math.min(window.devicePixelRatio, RATIO_CAP, budgeted);
+  };
   const renderer = new THREE.WebGLRenderer({
     antialias: true,
     powerPreference: 'high-performance',
   });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio, PIXEL_RATIO_CAP));
+  renderer.setPixelRatio(pixelRatio());
   renderer.setSize(container.clientWidth, container.clientHeight);
   renderer.shadowMap.enabled = true;
   renderer.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -106,7 +119,7 @@ export function createScene(container: HTMLElement): CrapsScene {
     const w = container.clientWidth;
     const h = container.clientHeight;
     if (w === 0 || h === 0) return;
-    const ratio = Math.min(window.devicePixelRatio, PIXEL_RATIO_CAP); // may change across monitors/zoom
+    const ratio = pixelRatio(); // re-derived: viewport size and DPR both vary
     renderer.setPixelRatio(ratio);
     renderer.setSize(w, h);
     composer.setPixelRatio(ratio);

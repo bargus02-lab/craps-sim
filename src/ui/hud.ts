@@ -232,7 +232,10 @@ export class Hud {
                   left: 118px; right: 118px; transform: none;
                   width: fit-content; max-width: 100%; margin: 0 auto;
                   overflow-x: auto; scrollbar-width: none;
-                  padding-bottom: 0;
+                  /* overflow-x:auto also clips vertically, which sheared the
+                     top off the raised selected chip — the padding gives the
+                     lift and its glow room inside the scroll box. */
+                  padding: 9px 0 0; overscroll-behavior-x: contain;
                   bottom: calc(2px + env(safe-area-inset-bottom, 0px) / 2); }
           #roll { position: fixed; width: 62px; height: 62px; font-size: 0.72rem;
                   border-width: 2.5px;

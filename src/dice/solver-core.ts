@@ -165,8 +165,9 @@ function settledFace(d: CANNON.Body): Die | null {
   if (face === null) return null;
   if (Math.abs(d.position.y - DICE.half) > 0.004) return null; // cocked / stacked
   if (Math.abs(d.position.x) > TABLE.feltHalfX - 0.02) return null;
-  if (d.position.x > SOLVER.restMaxX) return null; // must rest inside the framed view
-  if (Math.abs(d.position.z) > TABLE.feltHalfZ - 0.02) return null;
+  // Rest zone: always fully visible, never behind a wall or the phone dock.
+  if (d.position.x > SOLVER.restMaxX || d.position.x < SOLVER.restMinX) return null;
+  if (Math.abs(d.position.z) > SOLVER.restMaxAbsZ) return null;
   return face;
 }
 

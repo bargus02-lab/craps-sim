@@ -107,6 +107,11 @@ describe('pre-roll solver', () => {
         expect(Math.abs(py - DICE.half)).toBeLessThan(0.005);
         expect(Math.abs(px)).toBeLessThan(TABLE.feltHalfX);
         expect(Math.abs(pz)).toBeLessThan(TABLE.feltHalfZ);
+        // Rest zone: dice must always come to rest where the player can see
+        // them — never against the far wall or under the phone's chip dock.
+        expect(px).toBeLessThanOrEqual(SOLVER.restMaxX);
+        expect(px).toBeGreaterThanOrEqual(SOLVER.restMinX);
+        expect(Math.abs(pz)).toBeLessThanOrEqual(SOLVER.restMaxAbsZ);
         expect(topFaceFromQuat(q, 0.999)).toBe(die === 0 ? a : b);
       }
 

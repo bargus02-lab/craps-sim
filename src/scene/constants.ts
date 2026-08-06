@@ -43,6 +43,14 @@ export const SOLVER = {
   /** Dice must settle left of this x so they always rest inside the framed
    *  main view (which crops the shooter's apron on the right). */
   restMaxX: 0.78,
+  /** ...and right of this x, so they never tuck against the far wall, whose
+   *  inner face hides them in the angled views. */
+  restMinX: -1.16,
+  /** Rest band across the table (Z). The near-side strip is where the phone
+   *  dock and money pills sit (their top edge lands at z ≈ 0.54, so this
+   *  leaves a die's width of margin), and the far strip disappears behind
+   *  the wall in the tilted view — dice must always settle in plain sight. */
+  restMaxAbsZ: 0.5,
 } as const;
 
 /**

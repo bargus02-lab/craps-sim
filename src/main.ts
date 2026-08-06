@@ -106,7 +106,7 @@ const session = { wagered: saved?.session.wagered ?? 0, net: saved?.session.net 
 const presets: Preset[] = saved?.presets ?? defaultPresets();
 
 sound.setEnabled(prefs.sound);
-view.setDof(prefs.dof);
+// Depth of field is set by applyView() below — it depends on the view, too.
 
 function saveAll() {
   writeSave({
@@ -278,6 +278,10 @@ function applyView() {
   // the on-table chips there so stack totals stay readable.
   const phonePlan = stage.clientHeight <= 540 && prefs.view === 'overhead';
   if (chips.setScale(phonePlan ? 1.6 : 1)) chips.update(state.bets);
+  // Depth of field is a look for the angled views. Straight down on a phone
+  // it only softens the layout text, so the flat view always renders crisp
+  // (and skips the whole post-processing chain).
+  view.setDof(prefs.dof && !phonePlan);
 }
 applyView();
 // The overhead camera distance depends on the viewport — keep the camera
@@ -301,7 +305,7 @@ const panels = new Panels(
     onPrefsChange(patch) {
       Object.assign(prefs, patch);
       sound.setEnabled(prefs.sound);
-      view.setDof(prefs.dof);
+      applyView(); // depth of field depends on the view, not just the pref
       saveAll();
     },
     onResetBankroll() {
@@ -477,14 +481,23 @@ new LayoutPicker(
     onRemove(region) {
       tryRemove(region);
     },
+    onDragOff(region) {
+      // Only a stack with money on it can have a chip pulled off; dragging
+      // across bare felt stays silent.
+      if (region.target && amountFor(region.target) > 0) tryRemove(region);
+    },
     onHover(region, x, y) {
       if (!region) {
         hud.tooltip(null, x, y);
         return;
       }
       const riding = region.target ? amountFor(region.target) : 0;
+      // At the rail a drag steers the camera, so only the overhead view can
+      // honestly advertise drag-to-remove.
+      const how =
+        view.cameraRig.mode === 'overhead' ? 'drag off or ctrl+click' : 'ctrl+click';
       hud.tooltip(
-        riding > 0 ? `${region.label} — ${fmt(riding)} riding · ctrl+click removes` : region.label,
+        riding > 0 ? `${region.label} — ${fmt(riding)} riding · ${how} to remove` : region.label,
         x,
         y,
       );
@@ -503,6 +516,9 @@ new LayoutPicker(
       POINT_NUMBERS.filter((n) => !!state.bets.comePoints[n]),
       POINT_NUMBERS.filter((n) => !!state.bets.dontComePoints[n]),
     ),
+  // At the rail a drag steers the camera, so drag-off only removes chips in
+  // the overhead betting view.
+  () => view.cameraRig.mode === 'overhead',
 );
 
 // --------------------------------------------------------- resolution display
@@ -806,6 +822,7 @@ async function doRoll() {
 (window as unknown as Record<string, unknown>).__craps = {
   view,
   sound,
+  THREE,
   fastForwardRoll,
   get state() {
     return state;

@@ -14,8 +14,14 @@ import { regionAt, type LayoutRegion } from './layout';
 export interface PickEvents {
   onBet(region: LayoutRegion): void;
   onRemove(region: LayoutRegion): void;
+  /** Chip dragged off a stack — the touch equivalent of ctrl+click. */
+  onDragOff(region: LayoutRegion): void;
   onHover(region: LayoutRegion | null, clientX: number, clientY: number): void;
 }
+
+/** How far a press must travel off a stack to pull a chip out of it. Well
+ *  beyond CLICK_SLOP_PX so a sloppy tap can never take money off the table. */
+const DRAG_OFF_PX = 22;
 
 export class LayoutPicker {
   private raycaster = new THREE.Raycaster();
@@ -31,6 +37,10 @@ export class LayoutPicker {
   private exceededSlop = false;
   private suppressedAtDown = false;
   private lastHoverAt = 0;
+  private downRegion: LayoutRegion | null = null;
+  /** Stack a drag has pulled a chip from — armed during the move, but not
+   *  cashed until the finger lifts, so the gesture stays abortable. */
+  private pendingDragOff: LayoutRegion | null = null;
 
   constructor(
     private el: HTMLElement,
@@ -41,6 +51,9 @@ export class LayoutPicker {
     private suppressClicks: () => boolean = () => false,
     /** Dynamic regions (e.g. odds zones on traveled come points), checked first. */
     private extraRegions: () => LayoutRegion[] = () => [],
+    /** Drag-off is only a removal gesture where dragging means nothing else —
+     *  at the rail the same drag steers the camera. */
+    private dragOffEnabled: () => boolean = () => true,
   ) {
     this.highlight = new THREE.Mesh(
       new THREE.PlaneGeometry(1, 1),
@@ -66,6 +79,10 @@ export class LayoutPicker {
       this.downRemove = e.button === 2 || e.ctrlKey || e.metaKey;
       this.downValid = e.button === 0 || e.button === 2;
       this.exceededSlop = false;
+      this.pendingDragOff = null;
+      // Remembered from the press, not the release: a drag-off must credit the
+      // stack the finger started on, wherever it ends up.
+      this.downRegion = this.regionUnder(e);
       // LATCHED at gesture start: a press that begins while the camera is off
       // the rail (or dice are rolling) can never become a bet, no matter how
       // long it is held — the world may move under a stationary pointer.
@@ -73,11 +90,26 @@ export class LayoutPicker {
     });
     el.addEventListener('pointermove', (e) => {
       // Slop tracking sees EVERY move (gesture correctness)...
-      if (
-        e.pointerId === this.activePointer &&
-        Math.hypot(e.clientX - this.downX, e.clientY - this.downY) > CLICK_SLOP_PX
-      ) {
-        this.exceededSlop = true; // latched: this gesture is a drag forever
+      if (e.pointerId === this.activePointer) {
+        const travel = Math.hypot(e.clientX - this.downX, e.clientY - this.downY);
+        if (travel > CLICK_SLOP_PX) {
+          this.exceededSlop = true; // latched: this gesture is a drag forever
+        }
+        // Arm a chip pull off the stack the drag started on. Nothing is taken
+        // off the table yet — a gesture the player reverses, or one iOS
+        // cancels out from under them (edge swipe, palm, incoming call), must
+        // never move money.
+        if (
+          travel > DRAG_OFF_PX &&
+          !this.pendingDragOff &&
+          this.downValid &&
+          !this.downRemove &&
+          !this.suppressedAtDown &&
+          this.downRegion &&
+          this.dragOffEnabled()
+        ) {
+          this.pendingDragOff = this.downRegion;
+        }
       }
       // ...but the raycast + DOM hover work is throttled to ~60Hz so
       // high-report-rate mice can't flood the main thread.
@@ -93,9 +125,23 @@ export class LayoutPicker {
       const valid = this.downValid;
       const wasDrag = this.exceededSlop;
       const suppressed = this.suppressedAtDown;
+      const pending = this.pendingDragOff;
       this.activePointer = null;
       this.downValid = false;
-      if (!valid || wasDrag || suppressed || this.suppressClicks()) return;
+      this.downRegion = null;
+      this.pendingDragOff = null;
+      // Both gestures answer to the same guards, re-checked at release: the
+      // world may have moved during a long press (a roll resolving, a view
+      // change) even though the finger never left the glass.
+      if (!valid || suppressed || this.suppressClicks()) return;
+      if (pending) {
+        // Dropping the chip back where it came from puts it back: only a
+        // release that is still clear of the stack pulls it off.
+        const travel = Math.hypot(e.clientX - this.downX, e.clientY - this.downY);
+        if (travel > DRAG_OFF_PX && this.dragOffEnabled()) this.events.onDragOff(pending);
+        return;
+      }
+      if (wasDrag) return; // a plain drag steers the camera; it never bets
       const region = this.regionUnder(e);
       if (!region) return;
       if (remove) this.events.onRemove(region);
@@ -105,6 +151,8 @@ export class LayoutPicker {
       if (e.pointerId === this.activePointer) {
         this.activePointer = null;
         this.downValid = false;
+        this.downRegion = null;
+        this.pendingDragOff = null; // cancelled gestures cost nothing
       }
     });
     el.addEventListener('pointerleave', () => {
