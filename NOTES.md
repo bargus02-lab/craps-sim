@@ -234,6 +234,22 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 11 — phone fit: full-bleed zoom, smaller dock (user-requested)
+
+- **Plan view zoomed to the felt**: the phone framing now fits the felt flush
+  to the screen edges — walls and wood survive only as the sliver the aspect
+  ratio leaves at the sides (fit half-extents: felt + wall + 1 cm wide, felt
+  + 1.5 cm z-bias tall, 5 mm margin). Iterated twice on user screenshots.
+- **Dock shrunk for phones**: 42 px chips, compact pills and buttons, 62 px
+  ROLL in the bottom-right corner. The corner ROLL had been hijacked by the
+  chip rail's `translateX(-50%)` — a transformed ancestor captures
+  `position: fixed` children — so the rail now centers with
+  `left/right insets + width: fit-content + margin: auto`, no transform.
+- **Canvas sizing watchdog**: alongside the ResizeObserver and orientation
+  re-checks, a visualViewport listener plus a 700 ms drift check against the
+  container corrects any stale iOS viewport size — the view can't stay
+  letterboxed after rotation or toolbar changes.
+
 ## Round 10 — landscape-only phones, plan view (user-requested)
 
 - **Phones are landscape-only**: portrait on a touch device shows a

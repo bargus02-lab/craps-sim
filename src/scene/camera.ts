@@ -92,13 +92,13 @@ export class RailCamera {
     let dir: THREE.Vector3;
     let up: THREE.Vector3;
     if (planView) {
-      // Tight fit: crop most of the wood, and bias the framing so the table
-      // sits slightly high on screen — the dock lives on the freed bottom
-      // strip instead of covering the pass line.
-      const zBias = 0.05;
-      const hx = TABLE.feltHalfX + TABLE.wallThickness + 0.015;
-      const hz = TABLE.feltHalfZ + TABLE.wallThickness * 0.5 + zBias;
-      d = Math.max(hx / Math.tan(hfov / 2), hz / Math.tan(vfov / 2)) + 0.02;
+      // Maximum zoom: the felt runs flush to the screen edges — the walls and
+      // wood rail are cropped to whatever sliver the aspect ratio leaves at
+      // the sides, and nothing but a hair of wall survives top and bottom.
+      const zBias = 0.015;
+      const hx = TABLE.feltHalfX + TABLE.wallThickness + 0.01;
+      const hz = TABLE.feltHalfZ + zBias;
+      d = Math.max(hx / Math.tan(hfov / 2), hz / Math.tan(vfov / 2)) + 0.005;
       target = new THREE.Vector3(0, 0, zBias);
       dir = new THREE.Vector3(0, -1, 0);
       up = new THREE.Vector3(0, 0, -1); // far side of the table at the top
