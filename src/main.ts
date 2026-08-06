@@ -76,9 +76,10 @@ document.body.innerHTML = `
       #payoutCol { display: none !important; }
     }
     /* Landscape phones are short: compress the column so all 11 rows fit,
-       and lift it clear of the corner ROLL button. */
+       lift it clear of the corner ROLL button, and leave the right edge to
+       the vertical roll-history strip. */
     @media (max-height: 500px) {
-      #payoutCol { gap: 1px; right: max(4px, env(safe-area-inset-right, 0px));
+      #payoutCol { gap: 1px; right: calc(max(5px, env(safe-area-inset-right, 0px)) + 24px);
                    top: 42%; }
       #payoutCol .pc-head { font-size: 7.5px; margin-bottom: 1px; }
       #payoutCol .pc-row { padding: 0 6px 0 2px; }
@@ -273,6 +274,10 @@ function applyView() {
   view.cameraRig.setMode(prefs.view);
   hud.setViewLabel(prefs.view);
   view.setFocusDistance(prefs.view === 'overhead' ? view.cameraRig.overheadHeight : 1.3);
+  // The phone plan view sits proportionally farther from the felt — oversize
+  // the on-table chips there so stack totals stay readable.
+  const phonePlan = stage.clientHeight <= 540 && prefs.view === 'overhead';
+  if (chips.setScale(phonePlan ? 1.6 : 1)) chips.update(state.bets);
 }
 applyView();
 // The overhead camera distance depends on the viewport — keep the camera

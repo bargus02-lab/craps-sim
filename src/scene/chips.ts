@@ -180,6 +180,17 @@ export class ChipRenderer {
   private pos = new THREE.Vector3();
   private scl = new THREE.Vector3(1, 1, 1);
   private axisY = new THREE.Vector3(0, 1, 0);
+  private scale = 1;
+
+  /** Uniform visual scale for the on-table chips — phones view the table from
+   *  proportionally farther away, so they render chips oversized to keep the
+   *  stack totals readable. Returns true when the value actually changed
+   *  (callers re-render the stacks only then). */
+  setScale(s: number): boolean {
+    if (s === this.scale) return false;
+    this.scale = s;
+    return true;
+  }
 
   // "Total" discs: the top chip of every stack shows the stack's full value,
   // like a dealer's lammer — white inset with the amount in the chip's color.
@@ -238,6 +249,7 @@ export class ChipRenderer {
       this.discPool[index] = disc;
       this.group.add(disc);
     }
+    disc.scale.setScalar(this.scale); // pooled discs are reused across scale changes
     (disc.material as THREE.MeshBasicMaterial).map = this.discTexture(total, base, ink);
     (disc.material as THREE.MeshBasicMaterial).needsUpdate = true;
     disc.position.set(x, y, z);
@@ -266,9 +278,23 @@ export class ChipRenderer {
     const counts = new Map<ChipDenom, number>();
     for (const d of CHIP_DENOMS) counts.set(d, 0);
     let discIndex = 0;
+    const s = this.scale;
+    const chipH = CHIP_HEIGHT * s;
+    this.scl.set(s, s, s);
 
     for (const { id, amount } of iterBets(bets)) {
       const anchor = anchorForBetId(id);
+      const ax = anchor.x;
+      let az = anchor.z;
+      // Traveled come/don't-come flats sit 5.3 cm from their odds and 7.8 cm
+      // from the ON puck — spacings tuned for 1x chips. Scaled-up chips
+      // respread: the flat slides away from the puck and the odds keeps a
+      // full scaled pair separation behind it. Identity at s = 1.
+      const pair = id.match(/^(comePoint|dontComePoint|comeOdds|dontComeOdds):/);
+      if (pair) {
+        az = -0.525 + 0.03 * (s - 1);
+        if (pair[1] === 'comeOdds' || pair[1] === 'dontComeOdds') az += 0.053 * s;
+      }
       // Smallest denominations at the BOTTOM of the stack — a red $5 added to
       // a green $25 slides underneath it.
       const chips = chipsFor(amount).reverse();
@@ -281,9 +307,9 @@ export class ChipRenderer {
       const ink = topDenom === 1 ? '#5f5949' : '#f4f1e6';
       this.placeDisc(
         discIndex++,
-        anchor.x,
-        anchor.z,
-        0.001 + (topCount - 1) * (CHIP_HEIGHT * 1.04) + CHIP_HEIGHT + 0.0006,
+        ax,
+        az,
+        0.001 + (topCount - 1) * (chipH * 1.04) + chipH + 0.0006,
         amount,
         base,
         ink,
@@ -302,12 +328,12 @@ export class ChipRenderer {
         slot++;
         // Columns fan out alternately left/right of the anchor.
         const colOffset =
-          column === 0 ? 0 : (Math.ceil(column / 2) * (column % 2 === 1 ? 1 : -1)) * (CHIP_RADIUS * 2.15);
+          column === 0 ? 0 : (Math.ceil(column / 2) * (column % 2 === 1 ? 1 : -1)) * (CHIP_RADIUS * s * 2.15);
         const j = jitter(baseSeed ^ (i * 0x45d9f3b));
         this.pos.set(
-          anchor.x + colOffset + j.dx,
-          0.001 + CHIP_HEIGHT / 2 + level * (CHIP_HEIGHT * 1.04),
-          anchor.z + j.dz,
+          ax + colOffset + j.dx * s,
+          0.001 + chipH / 2 + level * (chipH * 1.04),
+          az + j.dz * s,
         );
         this.quat.setFromAxisAngle(this.axisY, j.rot);
         this.mat4.compose(this.pos, this.quat, this.scl);

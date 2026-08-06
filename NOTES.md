@@ -234,6 +234,33 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 12 — phone HUD: corners + readable chips (user-requested)
+
+- **Dock hugs the bottom**: the phone rail drops its safe-area padding and
+  sits 2px + half the inset off the bottom edge (taps beside the home
+  indicator still land); bank pills and ROLL lowered to match.
+- **STATS/SETTINGS top-right**, row layout, on phones and narrow windows.
+- **Vertical roll history**: on short screens the strip becomes a right-edge
+  column — newest at top with the gold ring, capped at 14 so it clears the
+  corner ROLL; `setHistory` reverses/slices under a `matchMedia` check and
+  re-renders on resize, so rotation restores the horizontal strip.
+- **Readable on-table chips**: the phone plan view renders 3D chip stacks at
+  1.6× (`ChipRenderer.setScale` — scales chip instances, stack heights,
+  column fan-out, and the pooled total discs; re-applied per render since
+  discs are reused across scale changes). Wired in `applyView`, overhead
+  mode only, so the rail view keeps true-size chips.
+- **Payout column** shifts 24px left on phones to leave the right edge to
+  the history column.
+- **Adversarial review fixes** (4 confirmed by the review workflow):
+  (a) the top-right STATS/SETTINGS sit inside the open panel's footprint —
+  raised above it (z-index 8) so they keep working as toggles, panel content
+  padded down; (b) narrow-but-tall windows drop the horizontal history strip
+  below the relocated buttons; (c) history re-renders on the media-query
+  `change` event, not just `resize` (stale during iOS rotation); (d) scaled
+  chips merged traveled come/don't-come flats with their odds — pair anchors
+  now respread with the chip scale (identity at 1×) and the flat slides
+  clear of the ON puck.
+
 ## Round 11 — phone fit: full-bleed zoom, smaller dock (user-requested)
 
 - **Plan view zoomed to the felt**: the phone framing now fits the felt flush

@@ -43,10 +43,14 @@ export class Panels {
           #panelBtns { top: 11.4rem; }
         }
         @media (max-width: 640px), (max-height: 500px) {
-          #panelBtns { top: 0.4rem; left: max(0.6rem, env(safe-area-inset-left, 0px));
-                       flex-direction: row; gap: 6px; }
+          /* z-index above .panel (7): the top-right buttons live inside the
+             open panel's footprint, and they are the toggles that close it. */
+          #panelBtns { top: 0.35rem; left: auto;
+                       right: max(0.6rem, env(safe-area-inset-right, 0px));
+                       flex-direction: row; gap: 6px; z-index: 8; }
           #panelBtns button { padding: 0.35em 0.7em; font-size: 0.56rem; }
-          .panel { width: min(340px, 88vw); }
+          .panel { width: min(340px, 88vw); padding-top: 44px; }
+          .panel .close { top: 40px; }
         }
         /* Portrait phones show only the rotate screen. */
         @media (orientation: portrait) and (pointer: coarse) and (max-width: 940px) {

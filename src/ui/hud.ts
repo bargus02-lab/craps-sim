@@ -225,18 +225,21 @@ export class Hud {
           #keepBtn, #viewBtn, #presetBtn { padding: 0.45em 0.6em; font-size: 0.54rem;
                   letter-spacing: 0.06em; }
           /* Centered WITHOUT a transform — a transformed ancestor would
-             capture the fixed-position ROLL button. */
+             capture the fixed-position ROLL button. Hugs the very bottom:
+             the safe-area inset is only half-respected (taps still land fine
+             beside the home indicator) and the base padding is dropped. */
           #rail { gap: 5px; flex-wrap: nowrap;
                   left: 118px; right: 118px; transform: none;
                   width: fit-content; max-width: 100%; margin: 0 auto;
                   overflow-x: auto; scrollbar-width: none;
-                  bottom: calc(0.45rem + env(safe-area-inset-bottom, 0px)); }
+                  padding-bottom: 0;
+                  bottom: calc(2px + env(safe-area-inset-bottom, 0px) / 2); }
           #roll { position: fixed; width: 62px; height: 62px; font-size: 0.72rem;
                   border-width: 2.5px;
                   right: max(0.7rem, env(safe-area-inset-right, 0px));
-                  bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px)); }
+                  bottom: calc(5px + env(safe-area-inset-bottom, 0px) / 2); }
           #roll::after { inset: 5px; }
-          #bank { top: auto; bottom: calc(0.5rem + env(safe-area-inset-bottom, 0px));
+          #bank { top: auto; bottom: calc(4px + env(safe-area-inset-bottom, 0px) / 2);
                   left: max(0.6rem, env(safe-area-inset-left, 0px));
                   flex-direction: column; gap: 3px; }
           #bank .pill { min-width: 66px; padding: 1px 8px; border-width: 1px; }
@@ -250,6 +253,22 @@ export class Hud {
           #breakdown { top: 4.9rem; font-size: 0.72rem; padding: 4px 9px; min-width: 180px; }
           #fair, #session { display: none; }
           #presetPanel { width: 92vw; bottom: 78px; max-height: 64vh; }
+        }
+        /* Narrow-but-tall windows keep the horizontal strip, but the
+           STATS/SETTINGS row now sits top-right — drop the strip below it so
+           the newest (gold-ringed) bubbles stay visible. */
+        @media (max-width: 640px) and (min-height: 501px) {
+          #history { top: 2.4rem; }
+        }
+        /* Short landscape screens: the roll history becomes a vertical strip
+           down the right edge (newest at the top — setHistory reverses the
+           DOM order to match), tucked under the corner STATS/SETTINGS row. */
+        @media (max-height: 500px) {
+          #history { top: 34px; left: auto; transform: none;
+                     right: max(6px, env(safe-area-inset-right, 0px));
+                     flex-direction: column; }
+          #history .h:last-child { outline: none; }
+          #history .h:first-child { outline: 2px solid #e8c476; outline-offset: 1px; }
         }
         /* Phones must play in landscape: block portrait entirely. */
         @media (orientation: portrait) and (pointer: coarse) and (max-width: 940px) {
@@ -312,6 +331,14 @@ export class Hud {
     });
 
     this.rollBtn.addEventListener('click', () => cb.onRoll());
+
+    // The history strip's direction/order depends on the viewport shape —
+    // re-render it when the window changes. The bare resize event can carry
+    // stale dimensions during iOS rotation (see scene.ts), so also listen on
+    // the media query itself, which fires against the settled viewport.
+    const rerenderHistory = () => this.setHistory(this.lastHistory);
+    window.addEventListener('resize', rerenderHistory);
+    window.matchMedia('(max-height: 500px)').addEventListener('change', rerenderHistory);
   }
 
   private presetCb!: HudCallbacks;
@@ -396,9 +423,15 @@ export class Hud {
     document.getElementById('keepBtn')!.classList.toggle('active', active);
   }
 
-  /** Roll-history strip: sevens red, made points green, newest highlighted. */
+  /** Roll-history strip: sevens red, made points green, newest highlighted.
+   *  Short landscape screens render it as a vertical right-edge column —
+   *  newest first (top) and capped so it clears the corner ROLL button. */
+  private lastHistory: Array<{ t: number; kind: 'seven' | 'point' | 'normal' }> = [];
   setHistory(items: Array<{ t: number; kind: 'seven' | 'point' | 'normal' }>) {
-    document.getElementById('history')!.innerHTML = items
+    this.lastHistory = items;
+    const vertical = window.matchMedia('(max-height: 500px)').matches;
+    const shown = vertical ? items.slice(-14).reverse() : items;
+    document.getElementById('history')!.innerHTML = shown
       .map(
         (i) =>
           `<span class="h${i.kind === 'seven' ? ' seven' : i.kind === 'point' ? ' point' : ''}">${i.t}</span>`,
