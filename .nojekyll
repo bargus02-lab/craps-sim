@@ -1,0 +1,7 @@
+GitHub Pages must serve this build verbatim, not run it through Jekyll.
+Vite copies everything in public/ to the root of dist/, so this file rides
+along with every build and lands in the gh-pages branch automatically.
+
+Without it, Pages runs the Jekyll pipeline over the deploy — which failed
+outright on two consecutive deploys (the site silently kept serving the
+previous bundle while the build reported "Page build failed").
