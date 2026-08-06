@@ -222,7 +222,7 @@ export class Hud {
           .chip::after { inset: 4px; border-width: 1.5px; }
           .chip:hover { transform: none; }
           .chip.active { transform: translateY(-5px); }
-          #keepBtn, #viewBtn, #presetBtn { padding: 0.45em 0.6em; font-size: 0.54rem;
+          #keepBtn, #presetBtn { padding: 0.45em 0.6em; font-size: 0.54rem;
                   letter-spacing: 0.06em; }
           /* Centered WITHOUT a transform — a transformed ancestor would
              capture the fixed-position ROLL button. Hugs the very bottom:
@@ -272,6 +272,20 @@ export class Hud {
                      flex-direction: column; }
           #history .h:last-child { outline: none; }
           #history .h:first-child { outline: 2px solid #e8c476; outline-offset: 1px; }
+        }
+        /* No rail view on a small TOUCH screen: it can only frame a corner of
+           the layout there, and one stray tap on this pill used to strand the
+           player in it (the choice persists, so even a reload didn't help).
+           The pointer test keeps the view available to a merely short — or
+           zoomed-in — desktop window. These conditions MUST match
+           compactViewport() in main.ts, which forces the plan view, or the
+           button survives as a dead control. Written as two rules because
+           "or" inside a media query is newer than the browsers this targets. */
+        @media (pointer: coarse) and (max-width: 640px) {
+          #viewBtn { display: none; }
+        }
+        @media (pointer: coarse) and (max-height: 540px) {
+          #viewBtn { display: none; }
         }
         /* Phones must play in landscape: block portrait entirely. */
         @media (orientation: portrait) and (pointer: coarse) and (max-width: 940px) {

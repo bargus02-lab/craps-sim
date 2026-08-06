@@ -45,7 +45,10 @@ document.body.innerHTML = `
   <div id="stage"></div>
   <div id="payoutCol"></div>
   <style>
-    html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0c10; }
+    /* touch-action here kills double-tap-to-zoom everywhere outside the
+       canvas — the page is a fixed-size board, never a document to zoom. */
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #0a0c10;
+                 touch-action: manipulation; }
     #stage { position: fixed; inset: 0; }
     #stage canvas { display: block; touch-action: none; }
     #payoutCol { position: fixed; right: 12px; top: 50%; transform: translateY(-50%);
@@ -88,6 +91,14 @@ document.body.innerHTML = `
       #payoutCol .pc-hard { font-size: 8px; }
     }
   </style>`;
+
+// iOS Safari ignores `user-scalable=no` on purpose, so a stray pinch — or a
+// two-finger brush while holding the phone in landscape — really can zoom the
+// whole page. Everything here is position:fixed, so there are no scrollbars to
+// find the way back with, and the player is stranded. Refuse the gesture.
+for (const type of ['gesturestart', 'gesturechange', 'gestureend']) {
+  document.addEventListener(type, (e) => e.preventDefault(), { passive: false });
+}
 
 const stage = document.getElementById('stage')!;
 const view = createScene(stage);
@@ -231,6 +242,24 @@ function applyPreset(i: number) {
   );
 }
 
+/**
+ * Touch devices with a small screen play in the plan view, whatever the saved
+ * preference says. The first-person rail view can only show a corner of the
+ * layout on a phone, so a stray tap on the (tiny, dock-sized) view button read
+ * as being stuck zoomed in — and because the choice is persisted, reloading
+ * didn't get the player out.
+ *
+ * The pointer test matters as much as the size: a short desktop window frames
+ * the rail view perfectly well, and a viewport shrinks when the browser zooms
+ * in — so a size-only rule would confiscate the view from someone who had
+ * merely zoomed their desktop browser, which is precisely what a low-vision
+ * player does. The preference itself is never rewritten, so any window that
+ * regains the room opens in whichever view its owner chose.
+ */
+const compactViewport = () =>
+  window.matchMedia('(pointer: coarse)').matches &&
+  (stage.clientHeight <= 540 || stage.clientWidth <= 640);
+
 const hud = new Hud(document.body, {
   onSelectDenom(d) {
     activeDenom = d;
@@ -240,6 +269,7 @@ const hud = new Hud(document.body, {
     saveAll();
   },
   onToggleView() {
+    if (compactViewport()) return; // plan view only down here; the button is hidden
     prefs.view = prefs.view === 'overhead' ? 'rail' : 'overhead';
     applyView();
     saveAll();
@@ -269,14 +299,15 @@ const hud = new Hud(document.body, {
 });
 hud.setKeepActive(state.settings.keepWinningBetsOnTable);
 
-/** Move the camera to the preferred betting view and match the DOF focus. */
+/** Move the camera to the view in force and match the DOF focus. */
 function applyView() {
-  view.cameraRig.setMode(prefs.view);
-  hud.setViewLabel(prefs.view);
-  view.setFocusDistance(prefs.view === 'overhead' ? view.cameraRig.overheadHeight : 1.3);
+  const mode = compactViewport() ? 'overhead' : prefs.view;
+  view.cameraRig.setMode(mode);
+  hud.setViewLabel(mode);
+  view.setFocusDistance(mode === 'overhead' ? view.cameraRig.overheadHeight : 1.3);
   // The phone plan view sits proportionally farther from the felt — oversize
   // the on-table chips there so stack totals stay readable.
-  const phonePlan = stage.clientHeight <= 540 && prefs.view === 'overhead';
+  const phonePlan = stage.clientHeight <= 540 && mode === 'overhead';
   if (chips.setScale(phonePlan ? 1.6 : 1)) chips.update(state.bets);
   // Depth of field is a look for the angled views. Straight down on a phone
   // it only softens the layout text, so the flat view always renders crisp

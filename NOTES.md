@@ -234,6 +234,39 @@ instanced chips; 121 fps measured with depth of field enabled.
   (getcwd EPERM). Builds/tests/commits run from a mirrored workspace in /tmp,
   synced from the canonical files in the project directory.
 
+## Round 14 — the "stuck zoomed in" trap (user-reported)
+
+A player reported being stuck "accidentally zoomed too far in" on an iPhone.
+The cause was not zoom at all: the dock's 58×20px RAIL VIEW pill sits right
+beside PRESETS, and one stray tap switches a phone to the first-person
+camera, which can only frame a corner of the layout on a short screen. The
+choice is **persisted**, so reloading did not recover — the only escape was
+the same tiny pill, now reading "TOP VIEW", which reads as a view name
+rather than a way out.
+
+- **Small touch screens are plan-view only.** `applyView` derives the camera
+  mode from `compactViewport()` — `(pointer: coarse)` AND (height ≤ 540 or
+  width ≤ 640) — rather than the raw preference, and the view button is
+  hidden at matching CSS conditions. This *rescues devices already stuck*: a
+  save carrying `view: 'rail'` boots straight to the plan view, bankroll and
+  stats intact.
+- **The pointer test is load-bearing** (adversarial review caught its
+  absence): a viewport shrinks when a desktop browser zooms in, so a
+  size-only rule confiscated the rail view — and its only control — from
+  anyone at 150% zoom (1280×800 → 853×533), which is exactly what a
+  low-vision player does. Short desktop windows frame the rail view fine and
+  now keep it, verified at 853×533 with a `rail` save: view honoured, button
+  present reading "TOP VIEW".
+- **The preference is left alone**, never rewritten — a desktop window still
+  opens in whichever view its owner chose, and resizing between a desktop
+  window and a phone swaps live in both directions.
+- **Real page zoom is refused too**, since iOS Safari deliberately ignores
+  `user-scalable=no`: `gesturestart`/`change`/`end` are prevented and
+  `touch-action: manipulation` kills double-tap zoom outside the canvas
+  (the canvas keeps `touch-action: none` for drag-look). With every element
+  `position: fixed` there are no scrollbars to find the way back with, so a
+  pinch had to be made impossible rather than merely discouraged.
+
 ## Round 13 — sharpness, drag-off, dice in sight (user-requested)
 
 - **Sharper on phones**: render resolution now comes from a pixel *budget*
